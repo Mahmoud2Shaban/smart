@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة الفروع - M.SH</title>
+<!-- icon -->
+<link rel="icon" href="img/mlogo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+</head>
+<body>
+
+<div id="splashScreen" class="splash">
+  <div class="splash-logo"><i class="fas fa-prescription-bottle-medical"></i></div>
+  <h1 class="splash-title">Pharm System</h1>
+  <p class="splash-dev"><i class="fas fa-code"></i> Developer M.SH</p>
+  <div class="splash-loader"><span></span></div>
+</div>
+
+<div id="loginScreen" class="login-screen hidden">
+  <div class="login-box">
+    <i class="fas fa-lock login-icon"></i>
+    <h2 id="loginBranchName">تسجيل الدخول</h2>
+    <div class="input-group"><i class="fas fa-user"></i><input type="text" id="loginUser" placeholder="اسم المستخدم"></div>
+    <div class="input-group"><i class="fas fa-key"></i><input type="password" id="loginPass" placeholder="الرقم السري"></div>
+    <button id="loginBtn" class="btn-primary"><i class="fas fa-right-to-bracket"></i> دخول</button>
+    <button id="loginBack" class="btn-ghost"><i class="fas fa-xmark"></i> إلغاء</button>
+  </div>
+</div>
+
+<div id="dashboardScreen" class="dashboard hidden">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i class="fas fa-prescription-bottle-medical"></i><span>M.SH System</span></div>
+    <nav id="sidebarNav">
+      <a href="#" data-page="home" class="active"><i class="fas fa-house"></i> الصفحة الرئيسية</a>
+      <a href="#" data-page="smart"><i class="fas fa-microchip"></i> سمارت فارما</a>
+      <a href="#" data-page="san"><i class="fas fa-capsules"></i> صن فارما</a>
+      <a href="#" data-page="taiba"><i class="fas fa-hospital"></i> طيبة القصاصين</a>
+      <a href="#" data-page="dawa"><i class="fas fa-pills"></i> الدواء فارما</a>
+      <a href="#" data-page="rawi"><i class="fas fa-mortar-pestle"></i> الراوي فارما</a>
+      <a href="#" data-page="admin"><i class="fas fa-user-plus"></i> إنشاء حساب جديد</a>
+      <a href="#" data-page="developer"><i class="fas fa-code"></i> Developer</a>
+    </nav>
+    <div class="sidebar-footer"><i class="fas fa-code"></i> Developer M.SH</div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button id="menuToggle" class="menu-toggle"><i class="fas fa-bars"></i></button>
+      <h2 id="pageTitle">الصفحة الرئيسية</h2>
+      <div class="topbar-user">
+        <span id="currentUserLabel" class="hidden"></span>
+        <button id="logoutBtn" class="btn-ghost hidden"><i class="fas fa-right-from-bracket"></i> خروج</button>
+      </div>
+    </header>
+
+    <section id="page-home" class="page active">
+      <div class="hero">
+        <div class="hero-content">
+          <h1>نظام إدارة ومطابقة الفروع</h1>
+          <p>منصة احترافية لرفع ملفات Excel وتحليلها ومطابقة الأصناف وحساب الفروق والمصفر لكل الفروع</p>
+          <div class="hero-badges">
+            <span><i class="fas fa-file-excel"></i> رفع وتحميل Excel</span>
+            <span><i class="fas fa-magnifying-glass-chart"></i> مطابقة الأصناف</span>
+            <span><i class="fas fa-chart-line"></i> تحليل رقمي وبياني</span>
+          </div>
+        </div>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card"><i class="fas fa-table-cells-large"></i><h3>مطابقة الأصناف</h3><p>مطابقة الأصناف والأسعار بين ملف الفرع وملف المطابقة</p></div>
+        <div class="feature-card"><i class="fas fa-people-arrows"></i><h3>فرق الجملة</h3><p>ربط 3 ملفات وحساب فرق الجملة والفرق لكل صنف</p></div>
+        <div class="feature-card"><i class="fas fa-receipt"></i><h3>فرق الفاكسات</h3><p>مطابقة الفاكسات وحساب الفروق</p></div>
+        <div class="feature-card"><i class="fas fa-filter"></i><h3>مصفر الفاكسات</h3><p>حساب المطلوب والمصفر والفاكسات</p></div>
+      </div>
+      <footer class="page-footer"><i class="fas fa-code"></i> Developer M.SH</footer>
+    </section>
+
+    <section id="page-branch" class="page hidden"></section>
+
+    <section id="page-admin" class="page hidden">
+      <div class="admin-tabs">
+        <button class="tab-btn active" data-tab="admin-home"><i class="fas fa-house"></i> الرئيسية</button>
+        <button class="tab-btn" data-tab="admin-users"><i class="fas fa-user-plus"></i> إنشاء مستخدم</button>
+        <button class="tab-btn" data-tab="admin-perms"><i class="fas fa-user-lock"></i> الصلاحيات</button>
+      </div>
+      <div id="admin-home" class="tab-panel active"></div>
+      <div id="admin-users" class="tab-panel hidden"></div>
+      <div id="admin-perms" class="tab-panel hidden"></div>
+    </section>
+  </main>
+</div>
+
+<div id="toastContainer" class="toast-container"></div>
+
+<div id="confirmModal" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="confirmTitle"><i class="fas fa-triangle-exclamation"></i> تأكيد</h3>
+    <p id="confirmMsg"></p>
+    <div class="modal-actions">
+      <button id="confirmYes" class="btn-primary"><i class="fas fa-check"></i> تأكيد</button>
+      <button id="confirmNo" class="btn-ghost"><i class="fas fa-xmark"></i> إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/matching.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>
