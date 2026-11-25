@@ -12,7 +12,7 @@ const Auth = {
   init(){
     if(!App.users || typeof App.users !== 'object') App.users = {};
     if(!App.users['developer']){
-      App.users['developer'] = { user:'developer', pass:'msh2024', role:'developer', branch:'dev' };
+      App.users['developer'] = { user:'developer', pass:'msh2000', role:'developer', branch:'dev' };
       App.saveUsers();
     }
     document.getElementById('loginBtn').onclick = ()=> this.login();
