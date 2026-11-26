@@ -22,7 +22,8 @@ const Dashboard = {
         <button data-view="whole-diff"><i class="fas fa-people-arrows"></i> فرق الجملة</button>
         <button data-view="fax-diff"><i class="fas fa-receipt"></i> فرق الفاكسات</button>
         <button data-view="fax-filter"><i class="fas fa-filter"></i> مصفر الفاكسات</button>
-        <button data-view="general-filter"><i class="fas fa-layer-group"></i> المصفر</button>`}
+        <button data-view="general-filter"><i class="fas fa-layer-group"></i> المصفر</button>
+        <button data-view="over-stock"><i class="fas fa-boxes-packing"></i> أوفر استوك</button>`}
       </div>
       <div id="branchView"></div>
     `;
@@ -50,7 +51,8 @@ const Dashboard = {
           <div class="feature-card"><i class="fas fa-people-arrows"></i><h3>فرق الجملة</h3><p>ربط 3 ملفات وحساب فرق الجملة</p></div>
           <div class="feature-card"><i class="fas fa-receipt"></i><h3>فرق الفاكسات</h3><p>حساب الفروق بين ملفي الفاكسات</p></div>
           <div class="feature-card"><i class="fas fa-filter"></i><h3>مصفر الفاكسات</h3><p>حساب المطلوب والمصفر والفاكسات</p></div>
-          <div class="feature-card"><i class="fas fa-layer-group"></i><h3>المصفر العام</h3><p>حساب المصفر العام للفرع</p></div>`}
+          <div class="feature-card"><i class="fas fa-layer-group"></i><h3>المصفر العام</h3><p>حساب المصفر العام للفرع</p></div>
+          <div class="feature-card"><i class="fas fa-boxes-packing"></i><h3>أوفر استوك</h3><p>تحليل ذكي للأوفر استوك</p></div>`}
         </div>`;
       return;
     }
@@ -204,11 +206,8 @@ const Dashboard = {
         const sort = document.getElementById('sortWhole').value;
 
         let rows = baseRows.filter(r =>
-          !q ||
-          normalize(r.name || '').includes(q) ||
-          normalize(r.taibaCode || '').includes(q) ||
-          normalize(r.branchCode || '').includes(q) ||
-          normalize(r.supplier || '').includes(q) ||
+          !q || normalize(r.name || '').includes(q) || normalize(r.taibaCode || '').includes(q) ||
+          normalize(r.branchCode || '').includes(q) || normalize(r.supplier || '').includes(q) ||
           normalize(r.wholeName || '').includes(q)
         );
 
@@ -246,36 +245,22 @@ const Dashboard = {
             <td>${r.supplier || '—'}</td>
             <td>${r.wholeDiscount ?? ''}</td>
             <td>${r.wholeName || '—'}</td>
-            <td>
-              <span class="${diffClass}" style="min-width:80px;justify-content:center;display:inline-flex;align-items:center;gap:4px">
-                <i class="fas ${diffIcon}"></i> ${diffVal}
-              </span>
-            </td>
+            <td><span class="${diffClass}" style="min-width:80px;justify-content:center;display:inline-flex;align-items:center;gap:4px"><i class="fas ${diffIcon}"></i> ${diffVal}</span></td>
           </tr>`;
         });
 
         document.getElementById('wholeResults').innerHTML = `
           <div class="stats-grid" style="margin:15px 0;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-            <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">إجمالي الأصناف</div></div>
-            <div class="stat-card"><i class="fas fa-arrow-trend-up" style="color:var(--success)"></i><div class="stat-num" style="color:var(--success)">${positive}</div><div class="stat-label">فرق موجب</div></div>
-            <div class="stat-card"><i class="fas fa-arrow-trend-down" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${negative}</div><div class="stat-label">فرق سالب</div></div>
-            <div class="stat-card"><i class="fas fa-equals" style="color:var(--muted)"></i><div class="stat-num" style="color:var(--muted)">${zero}</div><div class="stat-label">فرق صفر</div></div>
-            <div class="stat-card"><i class="fas fa-link" style="color:var(--primary)"></i><div class="stat-num" style="color:var(--primary)">${matchedBoth}</div><div class="stat-label">تم ربطهم بالكامل</div></div>
+            <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">إجمالي</div></div>
+            <div class="stat-card"><i class="fas fa-arrow-trend-up" style="color:var(--success)"></i><div class="stat-num" style="color:var(--success)">${positive}</div><div class="stat-label">موجب</div></div>
+            <div class="stat-card"><i class="fas fa-arrow-trend-down" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${negative}</div><div class="stat-label">سالب</div></div>
+            <div class="stat-card"><i class="fas fa-equals" style="color:var(--muted)"></i><div class="stat-num" style="color:var(--muted)">${zero}</div><div class="stat-label">صفر</div></div>
+            <div class="stat-card"><i class="fas fa-link" style="color:var(--primary)"></i><div class="stat-num" style="color:var(--primary)">${matchedBoth}</div><div class="stat-label">ربط كامل</div></div>
           </div>
-          <div style="margin:10px 0;color:var(--muted);font-size:13px">
-            <i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${total} صف
-            ${sort==='desc'?' | <i class="fas fa-arrow-down-wide-short"></i> تنازلي':''}
-            ${sort==='asc'?' | <i class="fas fa-arrow-up-wide-short"></i> تصاعدي':''}
-            ${sort==='all'?' | <i class="fas fa-list"></i> بدون ترتيب':''}
-          </div>
+          <div style="margin:10px 0;color:var(--muted);font-size:13px"><i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${total} صف</div>
           <div class="table-wrap" style="max-height:70vh;overflow:auto">
             <table>
-              <thead>
-                <tr>
-                  <th>#</th><th>كود طيبة</th><th>كود الفرع</th><th>الصنف</th>
-                  <th>الخصم</th><th>المورد</th><th>خصم الجملة</th><th>صنف الجملة</th><th>الفرق</th>
-                </tr>
-              </thead>
+              <thead><tr><th>#</th><th>كود طيبة</th><th>كود الفرع</th><th>الصنف</th><th>الخصم</th><th>المورد</th><th>خصم الجملة</th><th>صنف الجملة</th><th>الفرق</th></tr></thead>
               <tbody>${tableRows}</tbody>
             </table>
           </div>`;
@@ -289,28 +274,24 @@ const Dashboard = {
         const z1 = document.getElementById('zoneLink');
         const z2 = document.getElementById('zoneWholeDiff');
         const z3 = document.getElementById('zoneWhole');
-        if(!z1._file){ showToast('❌ الملف 1 (الربط) غير صالح','error'); z1.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-        if(!z2._file){ showToast('❌ الملف 2 (فرق الجملة) غير صالح','error'); z2.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-        if(!z3._file){ showToast('❌ الملف 3 (الجملة) غير صالح','error'); z3.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+        if(!z1._file){ showToast('❌ الملف 1 غير صالح','error'); z1.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+        if(!z2._file){ showToast('❌ الملف 2 غير صالح','error'); z2.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+        if(!z3._file){ showToast('❌ الملف 3 غير صالح','error'); z3.scrollIntoView({behavior:'smooth',block:'center'}); return; }
         setLoading(btn, true);
         try{
           const rows = await Matching.runWholeDiff(z1._file, z2._file, z3._file);
-          console.log('✅ النتيجة:', rows.length, 'صف');
           baseRows = [...rows];
           currentRows = [...rows].sort((a,b) => b.diff - a.diff);
           App.branchesData[dataKey] = { ...(App.branchesData[dataKey]||{}), wholeDiff: currentRows };
           App.saveData();
           render();
-          showToast('تم حساب الفرق بنجاح','success');
-        }catch(err){
-          console.error('❌ خطأ:', err);
-          showToast(err.message || 'حدث خطأ','error');
-        }
+          showToast('تم حساب الفرق','success');
+        }catch(err){ showToast(err.message || 'حدث خطأ','error'); }
         setLoading(btn, false);
       };
 
       document.getElementById('btnClearWhole').onclick = async ()=>{
-        if(await confirmModal('حذف','حذف بيانات فرق الجملة؟')){
+        if(await confirmModal('حذف','حذف البيانات؟')){
           currentRows = []; baseRows = [];
           document.getElementById('wholeResults').innerHTML = '';
           Excel.resetAllZones();
@@ -327,14 +308,10 @@ const Dashboard = {
         if(sort === 'desc') rows.sort((a,b) => b.diff - a.diff);
         else if(sort === 'asc') rows.sort((a,b) => a.diff - b.diff);
         const out = rows.map(r=>({
-          'كود طيبة': r.taibaCode || '',
-          'كود الفرع': r.branchCode || '',
-          'الصنف': r.name || '',
-          'الخصم': r.discount ?? '',
-          'المورد': r.supplier || '',
-          'خصم الجملة': r.wholeDiscount ?? '',
-          'صنف الجملة': r.wholeName || '',
-          'الفرق': r.diff ?? 0
+          'كود طيبة': r.taibaCode || '', 'كود الفرع': r.branchCode || '',
+          'الصنف': r.name || '', 'الخصم': r.discount ?? '',
+          'المورد': r.supplier || '', 'خصم الجملة': r.wholeDiscount ?? '',
+          'صنف الجملة': r.wholeName || '', 'الفرق': r.diff ?? 0
         }));
         Excel.download(out, 'فرق_الجملة.xlsx', 'فرق الجملة');
       };
@@ -353,11 +330,11 @@ const Dashboard = {
             <button class="btn-ghost" id="btnClearFax"><i class="fas fa-trash-can"></i> حذف البيانات</button>
           </div>
           <div class="toolbar">
-            <input type="text" id="searchFax" placeholder="🔍 بحث بالصنف أو الاسم أو المورد...">
+            <input type="text" id="searchFax" placeholder="🔍 بحث...">
             <select id="sortFax">
-              <option value="desc">⬇️ من الأكبر إلى الأصغر (الفرق)</option>
-              <option value="asc">⬆️ من الأصغر إلى الأكبر (الفرق)</option>
-              <option value="all">📋 بدون ترتيب (الكل)</option>
+              <option value="desc">⬇️ الأكبر إلى الأصغر (الفرق)</option>
+              <option value="asc">⬆️ الأصغر إلى الأكبر (الفرق)</option>
+              <option value="all">📋 بدون ترتيب</option>
             </select>
             <button class="btn-primary" id="exportFax" style="width:auto"><i class="fas fa-file-excel"></i> تحميل Excel</button>
           </div>
@@ -373,18 +350,12 @@ const Dashboard = {
         const sort = document.getElementById('sortFax').value;
 
         let rows = baseRows.filter(r =>
-          !q ||
-          normalize(r.name || '').includes(q) ||
-          normalize(r.storeName || '').includes(q) ||
-          normalize(r.supplier || '').includes(q) ||
-          normalize(r.writer || '').includes(q)
+          !q || normalize(r.name || '').includes(q) || normalize(r.storeName || '').includes(q) ||
+          normalize(r.supplier || '').includes(q) || normalize(r.writer || '').includes(q)
         );
 
-        if(sort === 'desc'){
-          rows = [...rows].sort((a,b) => (b.diff ?? -Infinity) - (a.diff ?? -Infinity));
-        } else if(sort === 'asc'){
-          rows = [...rows].sort((a,b) => (a.diff ?? Infinity) - (b.diff ?? Infinity));
-        }
+        if(sort === 'desc') rows = [...rows].sort((a,b) => (b.diff ?? -Infinity) - (a.diff ?? -Infinity));
+        else if(sort === 'asc') rows = [...rows].sort((a,b) => (a.diff ?? Infinity) - (b.diff ?? Infinity));
 
         const total = baseRows.length;
         const matched = baseRows.filter(r=>r.matched).length;
@@ -397,16 +368,14 @@ const Dashboard = {
           document.getElementById('faxResults').innerHTML = `
             <div style="text-align:center;padding:40px;color:var(--muted)">
               <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
-              <p>${baseRows.length ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد بيانات — قم برفع الملفين واضغط "فرق الفاكسات"'}</p>
+              <p>${baseRows.length ? 'لا توجد نتائج' : 'لا توجد بيانات — ارفع الملفين واضغط "فرق الفاكسات"'}</p>
             </div>`;
           return;
         }
 
         let tableRows = '';
         rows.forEach((r, i)=>{
-          let diffVal = '_____';
-          let diffClass = '';
-          let diffIcon = 'fa-minus';
+          let diffVal = '_____', diffClass = '', diffIcon = 'fa-minus';
           if(r.diff != null){
             diffVal = r.diff;
             if(r.diff > 0){ diffClass = 'badge-match'; diffIcon = 'fa-arrow-trend-up'; }
@@ -415,19 +384,14 @@ const Dashboard = {
           }
 
           tableRows += `<tr>
-            <td>${i+1}</td>
-            <td>${r.name || ''}</td>
+            <td>${i+1}</td><td>${r.name || ''}</td>
             <td style="color:var(--muted)">${r.storeName || '—'}</td>
             <td>${r.qty !== '' && r.qty != null ? r.qty : '—'}</td>
             <td>${r.writer || '—'}</td>
             <td>${r.discount ?? '—'}</td>
             <td>${r.faxDiscount != null ? r.faxDiscount : '_____'}</td>
             <td>${r.supplier || '_____'}</td>
-            <td>
-              <span class="${diffClass}" style="min-width:80px;justify-content:center;display:inline-flex;align-items:center;gap:4px">
-                <i class="fas ${diffIcon}"></i> ${diffVal}
-              </span>
-            </td>
+            <td><span class="${diffClass}" style="min-width:80px;justify-content:center;display:inline-flex;align-items:center;gap:4px"><i class="fas ${diffIcon}"></i> ${diffVal}</span></td>
           </tr>`;
         });
 
@@ -440,20 +404,10 @@ const Dashboard = {
             <div class="stat-card"><i class="fas fa-arrow-trend-down" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${negative}</div><div class="stat-label">سالب</div></div>
             <div class="stat-card"><i class="fas fa-equals" style="color:var(--muted)"></i><div class="stat-num" style="color:var(--muted)">${zero}</div><div class="stat-label">صفر</div></div>
           </div>
-          <div style="margin:10px 0;color:var(--muted);font-size:13px">
-            <i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${total} صف
-            ${sort==='desc'?' | <i class="fas fa-arrow-down-wide-short"></i> تنازلي':''}
-            ${sort==='asc'?' | <i class="fas fa-arrow-up-wide-short"></i> تصاعدي':''}
-            ${sort==='all'?' | <i class="fas fa-list"></i> بدون ترتيب':''}
-          </div>
+          <div style="margin:10px 0;color:var(--muted);font-size:13px"><i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${total} صف</div>
           <div class="table-wrap" style="max-height:70vh;overflow:auto">
             <table>
-              <thead>
-                <tr>
-                  <th>#</th><th>الصنف</th><th>الاسم</th><th>الكمية</th><th>الكاتب</th>
-                  <th>الخصم</th><th>خصم الفاكسات</th><th>المورد</th><th>الفرق</th>
-                </tr>
-              </thead>
+              <thead><tr><th>#</th><th>الصنف</th><th>الاسم</th><th>الكمية</th><th>الكاتب</th><th>الخصم</th><th>خصم الفاكسات</th><th>المورد</th><th>الفرق</th></tr></thead>
               <tbody>${tableRows}</tbody>
             </table>
           </div>`;
@@ -466,27 +420,23 @@ const Dashboard = {
         const btn = document.getElementById('btnRunFax');
         const z1 = document.getElementById('zoneFaxDiff');
         const z2 = document.getElementById('zoneFax');
-        if(!z1._file){ showToast('❌ الملف 1 (فرق الفاكسات) غير صالح','error'); z1.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-        if(!z2._file){ showToast('❌ الملف 2 (الفاكسات) غير صالح','error'); z2.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+        if(!z1._file){ showToast('❌ الملف 1 غير صالح','error'); z1.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+        if(!z2._file){ showToast('❌ الملف 2 غير صالح','error'); z2.scrollIntoView({behavior:'smooth',block:'center'}); return; }
         setLoading(btn, true);
         try{
           const rows = await Matching.runFaxDiff(z1._file, z2._file);
-          console.log('✅ النتيجة:', rows.length, 'صف');
           baseRows = [...rows];
           currentRows = [...rows].sort((a,b) => (b.diff ?? -Infinity) - (a.diff ?? -Infinity));
           App.branchesData[dataKey] = { ...(App.branchesData[dataKey]||{}), faxDiff: currentRows };
           App.saveData();
           render();
-          showToast('تم حساب فرق الفاكسات بنجاح','success');
-        }catch(err){
-          console.error('❌ خطأ:', err);
-          showToast(err.message || 'حدث خطأ','error');
-        }
+          showToast('تم حساب فرق الفاكسات','success');
+        }catch(err){ showToast(err.message || 'حدث خطأ','error'); }
         setLoading(btn, false);
       };
 
       document.getElementById('btnClearFax').onclick = async ()=>{
-        if(await confirmModal('حذف','حذف بيانات فرق الفاكسات؟')){
+        if(await confirmModal('حذف','حذف البيانات؟')){
           currentRows = []; baseRows = [];
           document.getElementById('faxResults').innerHTML = '';
           Excel.resetAllZones();
@@ -504,11 +454,9 @@ const Dashboard = {
         else if(sort === 'asc') rows.sort((a,b) => (a.diff ?? Infinity) - (b.diff ?? Infinity));
 
         const out = rows.map(r=>({
-          'الصنف': r.name || '',
-          'الاسم': r.storeName || '',
+          'الصنف': r.name || '', 'الاسم': r.storeName || '',
           'الكمية': r.qty !== '' && r.qty != null ? r.qty : '',
-          'الكاتب': r.writer || '',
-          'الخصم': r.discount ?? '',
+          'الكاتب': r.writer || '', 'الخصم': r.discount ?? '',
           'خصم الفاكسات': r.faxDiscount != null ? r.faxDiscount : '_____',
           'المورد': r.supplier || '_____',
           'الفرق': r.diff != null ? r.diff : '_____'
@@ -518,7 +466,9 @@ const Dashboard = {
       return;
     }
 
-    /* 4) مصفر الفاكسات — 3 أزرار تبديل العرض */
+        /* ============================================================
+      4) مصفر الفاكسات — مع التكرار والمخازن والخصومات
+      ============================================================ */
     if(view === 'fax-filter'){
       el.innerHTML = `
         <div class="card">
@@ -533,9 +483,20 @@ const Dashboard = {
           </div>
           <div class="toolbar">
             <button class="btn-primary" id="btnShowAll" style="width:auto;background:#64748b"><i class="fas fa-list"></i> كل البيانات</button>
-            <button class="btn-primary" id="btnShowMasfar" style="width:auto;background:#ef4444"><i class="fas fa-filter"></i> مصفر الفاكسات</button>
-            <button class="btn-primary" id="btnShowHaysfar" style="width:auto;background:#f59e0b"><i class="fas fa-filter"></i> هيصفر الفاكسات</button>
+            <button class="btn-primary" id="btnShowMasfar" style="width:auto;background:#ef4444"><i class="fas fa-filter"></i> مصفر</button>
+            <button class="btn-primary" id="btnShowHaysfar" style="width:auto;background:#f59e0b"><i class="fas fa-filter"></i> هيصفر</button>
             <button class="btn-primary" id="exportFaxFilter" style="width:auto"><i class="fas fa-file-excel"></i> تحميل Excel</button>
+          </div>
+          <div class="toolbar">
+            <input type="text" id="searchFaxFilter" placeholder="🔍 بحث بالصنف أو الكود أو المورد...">
+            <select id="filterRepeat">
+              <option value="all">كل التكرارات</option>
+              <option value="0">غير موجود في الفاكسات</option>
+              <option value="1">مخزن واحد</option>
+              <option value="2">مخزنين</option>
+              <option value="3">3 مخازن</option>
+              <option value="4+">4 مخازن فأكثر</option>
+            </select>
           </div>
           <div id="faxFilterResults"></div>
         </div>`;
@@ -556,7 +517,10 @@ const Dashboard = {
         { label:'ك صافي بيع', key:'netSale' },
         { label:'المطلوب', key:'required' },
         { label:'المورد', key:'supplier' },
-        { label:'خصم الفاكسات', key:'faxDiscount' }
+        { label:'خصم الفاكسات', key:'faxDiscount' },
+        { label:'التكرار', key:'repeat' },
+        { label:'المخازن', key:'stores' },
+        { label:'الخصومات', key:'discounts' }
       ];
 
       const renderTable = (rows, title, color) => {
@@ -575,12 +539,34 @@ const Dashboard = {
             ${cols.map(c=>{
               let val = r[c.key];
               if(val === null || val === undefined) val = '_____';
+
+              // عمود المطلوب - تلوين
               if(c.key === 'required' && val > 0){
                 return `<td><span class="badge-miss"><i class="fas fa-arrow-trend-up"></i> ${val}</span></td>`;
               }
               if(c.key === 'required' && val === 0){
                 return `<td><span class="badge-match"><i class="fas fa-equals"></i> 0</span></td>`;
               }
+
+              // عمود التكرار - تلوين
+              if(c.key === 'repeat'){
+                let badge = '';
+                if(val === 0) badge = '<span class="badge-miss"><i class="fas fa-circle-xmark"></i> 0</span>';
+                else if(val === 1) badge = `<span class="badge-match">${val}</span>`;
+                else badge = `<span class="badge-match" style="background:#dbeafe;color:#1e40af">${val}</span>`;
+                return `<td>${badge}</td>`;
+              }
+
+              // عمود المخازن - يظهر بـ tooltip
+              if(c.key === 'stores'){
+                return `<td style="max-width:250px;white-space:normal;font-size:12px" title="${val}">${val}</td>`;
+              }
+
+              // عمود الخصومات
+              if(c.key === 'discounts'){
+                return `<td style="max-width:200px;white-space:normal;font-size:12px" title="${val}">${val}</td>`;
+              }
+
               return `<td>${val}</td>`;
             }).join('')}
           </tr>`;
@@ -601,12 +587,43 @@ const Dashboard = {
           </div>`;
       };
 
+      const getFilteredRows = (rows) => {
+        const q = normalize(document.getElementById('searchFaxFilter')?.value || '');
+        const repeatFilter = document.getElementById('filterRepeat')?.value || 'all';
+
+        let filtered = rows.filter(r => {
+          // فلترة البحث
+          if(q){
+            const matchSearch =
+              normalize(r.code || '').includes(q) ||
+              normalize(r.name || '').includes(q) ||
+              normalize(r.supplier || '').includes(q) ||
+              normalize(r.stores || '').includes(q);
+            if(!matchSearch) return false;
+          }
+
+          // فلترة التكرار
+          if(repeatFilter !== 'all'){
+            const repeat = r.repeat || 0;
+            if(repeatFilter === '0' && repeat !== 0) return false;
+            if(repeatFilter === '1' && repeat !== 1) return false;
+            if(repeatFilter === '2' && repeat !== 2) return false;
+            if(repeatFilter === '3' && repeat !== 3) return false;
+            if(repeatFilter === '4+' && repeat < 4) return false;
+          }
+
+          return true;
+        });
+
+        return filtered;
+      };
+
       const render = () => {
         if(!data.all.length && !data.masfar.length && !data.هيسفر.length){
           document.getElementById('faxFilterResults').innerHTML = `
             <div style="text-align:center;padding:40px;color:var(--muted)">
               <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
-              <p>لا توجد بيانات — قم برفع الملفات واضغط "تشغيل المصفر"</p>
+              <p>لا توجد بيانات — ارفع الملفات واضغط "تشغيل المصفر"</p>
             </div>`;
           return;
         }
@@ -615,25 +632,32 @@ const Dashboard = {
         const masfarCount = data.masfar.length;
         const haysfarCount = data.هيسفر.length;
         const withFax = data.all.filter(r=>r.matchedFax).length;
+        const repeated = data.all.filter(r=>r.repeat > 1).length;
 
         let html = `
           <div class="stats-grid" style="margin:15px 0">
             <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">إجمالي الأصناف</div></div>
             <div class="stat-card"><i class="fas fa-circle-check" style="color:var(--success)"></i><div class="stat-num" style="color:var(--success)">${withFax}</div><div class="stat-label">مرتبط بالفاكسات</div></div>
+            <div class="stat-card"><i class="fas fa-copy" style="color:var(--primary)"></i><div class="stat-num" style="color:var(--primary)">${repeated}</div><div class="stat-label">في أكثر من مخزن</div></div>
             <div class="stat-card"><i class="fas fa-filter" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${masfarCount}</div><div class="stat-label">مصفر</div></div>
             <div class="stat-card"><i class="fas fa-filter" style="color:var(--accent)"></i><div class="stat-num" style="color:var(--accent)">${haysfarCount}</div><div class="stat-label">هيصفر</div></div>
           </div>`;
 
+        // تطبيق الفلاتر
         if(currentView === 'all'){
-          html += renderTable(data.all, 'جميع البيانات', 'var(--primary)');
+          const filtered = getFilteredRows(data.all);
+          html += renderTable(filtered, 'جميع البيانات', 'var(--primary)');
         } else if(currentView === 'masfar'){
-          html += renderTable(data.masfar, 'مصفر الفاكسات (المطلوب ≠ 0 + إجمالي الكمية ≤ 10)', 'var(--danger)');
+          const filtered = getFilteredRows(data.masfar);
+          html += renderTable(filtered, 'مصفر (المطلوب ≠ 0 + إجمالي ≤ 10)', 'var(--danger)');
         } else if(currentView === 'haysfar'){
-          html += renderTable(data.هيسفر, 'هيصفر الفاكسات (المطلوب > 5 + إجمالي الكمية 11–2000)', 'var(--accent)');
+          const filtered = getFilteredRows(data.هيسفر);
+          html += renderTable(filtered, 'هيصفر (المطلوب > 5 + إجمالي 11–2000)', 'var(--accent)');
         }
 
         document.getElementById('faxFilterResults').innerHTML = html;
 
+        // ربط أزرار التبديل
         ['btnShowAll','btnShowMasfar','btnShowHaysfar'].forEach(id=>{
           const btn = document.getElementById(id);
           if(btn){
@@ -646,6 +670,10 @@ const Dashboard = {
       };
 
       render();
+
+      // ربط البحث والفلتر
+      document.getElementById('searchFaxFilter').oninput = render;
+      document.getElementById('filterRepeat').onchange = render;
 
       document.getElementById('btnRunFaxFilter').onclick = async ()=>{
         const btn = document.getElementById('btnRunFaxFilter');
@@ -690,9 +718,9 @@ const Dashboard = {
         let exportRows = [];
         let title = 'مصفر الفاكسات';
 
-        if(currentView === 'all'){ exportRows = data.all; title = 'جميع البيانات'; }
-        else if(currentView === 'masfar'){ exportRows = data.masfar; title = 'مصفر الفاكسات'; }
-        else if(currentView === 'haysfar'){ exportRows = data.هيسفر; title = 'هيصفر الفاكسات'; }
+        if(currentView === 'all'){ exportRows = getFilteredRows(data.all); title = 'جميع البيانات'; }
+        else if(currentView === 'masfar'){ exportRows = getFilteredRows(data.masfar); title = 'مصفر الفاكسات'; }
+        else if(currentView === 'haysfar'){ exportRows = getFilteredRows(data.هيسفر); title = 'هيصفر الفاكسات'; }
 
         if(!exportRows.length){ showToast('لا توجد بيانات للتحميل','error'); return; }
 
@@ -705,11 +733,9 @@ const Dashboard = {
         Excel.download(out, `${title}.xlsx`, title);
       };
       return;
-    }
+}
 
-    /* ============================================================
-   5) المصفر العام — 3 أزرار تبديل العرض
-   ============================================================ */
+    /* 5) المصفر العام */
     if(view === 'general-filter'){
       el.innerHTML = `
         <div class="card">
@@ -735,57 +761,31 @@ const Dashboard = {
       let currentView = 'all';
 
       const cols = [
-        { label:'الكود', key:'code' },
-        { label:'الاسم', key:'name' },
-        { label:'س البيع', key:'salePrice' },
-        { label:'المرجح', key:'weighted' },
-        { label:'ك مخزون', key:'stock' },
-        { label:'ك الوارد', key:'recQty' },
-        { label:'ك الطلبات', key:'ordQty' },
-        { label:'إجمالي الكمية', key:'totalQty' },
-        { label:'ك صافي بيع', key:'netSale' },
-        { label:'المطلوب', key:'required' }
+        { label:'الكود', key:'code' }, { label:'الاسم', key:'name' },
+        { label:'س البيع', key:'salePrice' }, { label:'المرجح', key:'weighted' },
+        { label:'ك مخزون', key:'stock' }, { label:'ك الوارد', key:'recQty' },
+        { label:'ك الطلبات', key:'ordQty' }, { label:'إجمالي الكمية', key:'totalQty' },
+        { label:'ك صافي بيع', key:'netSale' }, { label:'المطلوب', key:'required' }
       ];
 
       const renderTable = (rows, title, color) => {
-        if(!rows.length){
-          return `
-            <div style="text-align:center;padding:40px;color:var(--muted)">
-              <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
-              <p>${title} — لا توجد بيانات</p>
-            </div>`;
-        }
+        if(!rows.length) return `<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i><p>${title} — لا توجد بيانات</p></div>`;
 
         let tableRows = '';
         rows.forEach((r, i)=>{
-          tableRows += `<tr>
-            <td>${i+1}</td>
-            ${cols.map(c=>{
-              let val = r[c.key];
-              if(val === null || val === undefined) val = '';
-              if(c.key === 'required' && val > 0){
-                return `<td><span class="badge-miss"><i class="fas fa-arrow-trend-up"></i> ${val}</span></td>`;
-              }
-              if(c.key === 'required' && val === 0){
-                return `<td><span class="badge-match"><i class="fas fa-equals"></i> 0</span></td>`;
-              }
-              return `<td>${val}</td>`;
-            }).join('')}
-          </tr>`;
+          tableRows += `<tr><td>${i+1}</td>${cols.map(c=>{
+            let val = r[c.key];
+            if(val === null || val === undefined) val = '';
+            if(c.key === 'required' && val > 0) return `<td><span class="badge-miss"><i class="fas fa-arrow-trend-up"></i> ${val}</span></td>`;
+            if(c.key === 'required' && val === 0) return `<td><span class="badge-match"><i class="fas fa-equals"></i> 0</span></td>`;
+            return `<td>${val}</td>`;
+          }).join('')}</tr>`;
         });
 
-        return `
-          <h3 style="margin:15px 0;color:${color}"><i class="fas fa-table"></i> ${title} (${rows.length} صف)</h3>
+        return `<h3 style="margin:15px 0;color:${color}"><i class="fas fa-table"></i> ${title} (${rows.length} صف)</h3>
           <div class="table-wrap" style="max-height:70vh;overflow:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  ${cols.map(c=>`<th>${c.label}</th>`).join('')}
-                </tr>
-              </thead>
-              <tbody>${tableRows}</tbody>
-            </table>
+            <table><thead><tr><th>#</th>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>
+            <tbody>${tableRows}</tbody></table>
           </div>`;
       };
 
@@ -794,7 +794,7 @@ const Dashboard = {
           document.getElementById('genResults').innerHTML = `
             <div style="text-align:center;padding:40px;color:var(--muted)">
               <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
-              <p>لا توجد بيانات — قم برفع الملفات واضغط "ربط الملفات"</p>
+              <p>لا توجد بيانات — ارفع الملفات واضغط "ربط الملفات"</p>
             </div>`;
           return;
         }
@@ -803,31 +803,24 @@ const Dashboard = {
         const masfarCount = data.masfar.length;
         const haysfarCount = data.هيسفر.length;
 
-        let html = `
-          <div class="stats-grid" style="margin:15px 0">
-            <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">إجمالي الأصناف</div></div>
-            <div class="stat-card"><i class="fas fa-filter" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${masfarCount}</div><div class="stat-label">المصفر</div></div>
-            <div class="stat-card"><i class="fas fa-filter" style="color:var(--accent)"></i><div class="stat-num" style="color:var(--accent)">${haysfarCount}</div><div class="stat-label">هيصفر</div></div>
-          </div>`;
+        let html = `<div class="stats-grid" style="margin:15px 0">
+          <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">إجمالي</div></div>
+          <div class="stat-card"><i class="fas fa-filter" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${masfarCount}</div><div class="stat-label">المصفر</div></div>
+          <div class="stat-card"><i class="fas fa-filter" style="color:var(--accent)"></i><div class="stat-num" style="color:var(--accent)">${haysfarCount}</div><div class="stat-label">هيصفر</div></div>
+        </div>`;
 
-        if(currentView === 'all'){
-          html += renderTable(data.all, 'جميع البيانات', 'var(--primary)');
-        } else if(currentView === 'masfar'){
-          html += renderTable(data.masfar, 'المصفر (المطلوب ≠ 0 + إجمالي الكمية ≤ 10)', 'var(--danger)');
-        } else if(currentView === 'haysfar'){
-          html += renderTable(data.هيسفر, 'هيصفر (المطلوب > 5 + إجمالي الكمية 11–2000)', 'var(--accent)');
-        }
+        if(currentView === 'all') html += renderTable(data.all, 'جميع البيانات', 'var(--primary)');
+        else if(currentView === 'masfar') html += renderTable(data.masfar, 'المصفر (المطلوب ≠ 0 + إجمالي ≤ 10)', 'var(--danger)');
+        else if(currentView === 'haysfar') html += renderTable(data.هيسفر, 'هيصفر (المطلوب > 5 + إجمالي 11–2000)', 'var(--accent)');
 
         document.getElementById('genResults').innerHTML = html;
 
         ['btnGenAll','btnGenMasfar','btnGenHaysfar'].forEach(id=>{
           const btn = document.getElementById(id);
-          if(btn){
-            btn.onclick = () => {
-              currentView = id === 'btnGenAll' ? 'all' : id === 'btnGenMasfar' ? 'masfar' : 'haysfar';
-              render();
-            };
-          }
+          if(btn) btn.onclick = () => {
+            currentView = id === 'btnGenAll' ? 'all' : id === 'btnGenMasfar' ? 'masfar' : 'haysfar';
+            render();
+          };
         });
       };
 
@@ -848,11 +841,8 @@ const Dashboard = {
           App.saveData();
           currentView = 'all';
           render();
-          showToast('تم ربط الملفات بنجاح','success');
-        }catch(err){
-          console.error('❌ خطأ:', err);
-          showToast(err.message || 'حدث خطأ','error');
-        }
+          showToast('تم ربط الملفات','success');
+        }catch(err){ showToast(err.message || 'حدث خطأ','error'); }
         setLoading(btn, false);
       };
 
@@ -869,25 +859,168 @@ const Dashboard = {
       };
 
       document.getElementById('exportGen').onclick = ()=>{
-        let exportRows = [];
-        let title = 'المصفر';
-
+        let exportRows = [], title = 'المصفر';
         if(currentView === 'all'){ exportRows = data.all; title = 'جميع البيانات'; }
         else if(currentView === 'masfar'){ exportRows = data.masfar; title = 'المصفر'; }
-        else if(currentView === 'haysfar'){ exportRows = data.هيسفر; title = 'هيصفر'; }
+        else if(currentView === 'haysfar'){ exportRows = data.haysفر; title = 'هيصفر'; }
 
-        if(!exportRows.length){ showToast('لا توجد بيانات للتحميل','error'); return; }
-
-        const out = exportRows.map(r=>{
-          const o = {};
-          cols.forEach(c => { o[c.label] = r[c.key] ?? ''; });
-          return o;
-        });
-
+        if(!exportRows.length){ showToast('لا توجد بيانات','error'); return; }
+        const out = exportRows.map(r=>{ const o = {}; cols.forEach(c => { o[c.label] = r[c.key] ?? ''; }); return o; });
         Excel.download(out, `${title}.xlsx`, title);
       };
       return;
-}
+    }
+
+    /* 6) أوفر استوك */
+    if(view === 'over-stock'){
+      el.innerHTML = `
+        <div class="card">
+          <h3><i class="fas fa-boxes-packing"></i> أوفر استوك</h3>
+          ${this.uploadZone('zoneRecOS','الملف 1: الوارد (الكود، الكمية، الصنف) — اختياري', null, 'fa-arrow-down-to-line')}
+          ${this.uploadZone('zoneColOS','الملف 2: المجمع (الكود، الاسم، س البيع، المرجح، ك مخزون، ك صافي بيع) — إلزامي', null, 'fa-layer-group')}
+          ${this.uploadZone('zoneBalOS','الملف 3: الأرصدة (الكود، المرجح، الصنف) — اختياري', null, 'fa-coins')}
+          ${this.uploadZone('zoneOS','الملف 4: أوفر استوك (الكود، الاسم، الصنف، الكاتب، الطلبات، الخصم) — إلزامي', null, 'fa-boxes-packing')}
+          <div class="action-row">
+            <button class="btn-primary" id="btnRunOverStock"><i class="fas fa-calculator"></i> أوفر استوك</button>
+            <button class="btn-ghost" id="btnClearOS"><i class="fas fa-trash-can"></i> حذف البيانات</button>
+          </div>
+          <div class="toolbar">
+            <input type="text" id="searchOS" placeholder="🔍 بحث بالكود أو الاسم أو الصنف...">
+            <select id="filterAnalysisOS">
+              <option value="all">كل التحليلات</option>
+              <option value="استوك عادي">استوك عادي</option>
+              <option value="استوك للصنف">استوك للصنف</option>
+              <option value="أوفر استوك">أوفر استوك</option>
+              <option value="مراجعة">مراجعة</option>
+            </select>
+            <button class="btn-primary" id="exportOS" style="width:auto"><i class="fas fa-file-excel"></i> تحميل Excel</button>
+          </div>
+          <div id="osResults"></div>
+        </div>`;
+
+      this.wireUploadZones(['zoneRecOS','zoneColOS','zoneBalOS','zoneOS']);
+      let currentRows = [];
+
+      const render = ()=>{
+        const q = normalize(document.getElementById('searchOS').value);
+        const f = document.getElementById('filterAnalysisOS').value;
+
+        let rows = currentRows.filter(r =>
+          !q || normalize(r.code || '').includes(q) || normalize(r.name || '').includes(q) ||
+          normalize(r.name2 || '').includes(q) || normalize(r.writer || '').includes(q)
+        );
+
+        if(f !== 'all') rows = rows.filter(r => r.analysis === f);
+
+        const total = currentRows.length;
+        const normalCount = currentRows.filter(r=>r.analysis === 'استوك عادي').length;
+        const forItemCount = currentRows.filter(r=>r.analysis === 'استوك للصنف').length;
+        const overCount = currentRows.filter(r=>r.analysis === 'أوفر استوك').length;
+        const reviewCount = currentRows.filter(r=>r.analysis === 'مراجعة').length;
+
+        if(!rows.length){
+          document.getElementById('osResults').innerHTML = `
+            <div style="text-align:center;padding:40px;color:var(--muted)">
+              <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
+              <p>${currentRows.length ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد بيانات — ارفع الملفات واضغط "أوفر استوك"'}</p>
+            </div>`;
+          return;
+        }
+
+        let tableRows = '';
+        rows.forEach((r, i)=>{
+          let diffClass = '';
+          if(r.diff > 0) diffClass = 'badge-match';
+          else if(r.diff < 0) diffClass = 'badge-miss';
+
+          let analysisClass = '';
+          if(r.analysis === 'أوفر استوك') analysisClass = 'badge-miss';
+          else if(r.analysis === 'استوك للصنف') analysisClass = 'badge-match';
+
+          tableRows += `<tr>
+            <td>${i+1}</td><td>${r.code || ''}</td><td>${r.name || ''}</td>
+            <td>${r.name2 || ''}</td><td>${r.writer || ''}</td>
+            <td>${r.stock ?? 0}</td><td>${r.netSale ?? 0}</td>
+            <td>${r.orders ?? 0}</td><td>${r.required ?? 0}</td>
+            <td><b style="color:${r.overStock > 0 ? '#166534' : '#64748b'}">${r.overStock}</b></td>
+            <td>${r.discount ?? 0}</td><td>${r.lastDiscount ?? 0}</td>
+            <td>${r.weighted ?? 0}</td>
+            <td><span class="${diffClass}">${r.diff}</span></td>
+            <td><span class="${analysisClass}" style="font-size:11px">${r.analysis}</span></td>
+          </tr>`;
+        });
+
+        document.getElementById('osResults').innerHTML = `
+          <div class="stats-grid" style="margin:15px 0">
+            <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">إجمالي</div></div>
+            <div class="stat-card"><i class="fas fa-box" style="color:var(--muted)"></i><div class="stat-num" style="color:var(--muted)">${normalCount}</div><div class="stat-label">استوك عادي</div></div>
+            <div class="stat-card"><i class="fas fa-star" style="color:var(--success)"></i><div class="stat-num" style="color:var(--success)">${forItemCount}</div><div class="stat-label">استوك للصنف</div></div>
+            <div class="stat-card"><i class="fas fa-boxes-packing" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${overCount}</div><div class="stat-label">أوفر استوك</div></div>
+            <div class="stat-card"><i class="fas fa-triangle-exclamation" style="color:var(--accent)"></i><div class="stat-num" style="color:var(--accent)">${reviewCount}</div><div class="stat-label">مراجعة</div></div>
+          </div>
+          <div style="margin:10px 0;color:var(--muted);font-size:13px"><i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${total} صف</div>
+          <div class="table-wrap" style="max-height:70vh;overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>الكود</th><th>الاسم</th><th>الصنف</th><th>الكاتب</th>
+                  <th>ك مخزون</th><th>ك البيع</th><th>الطلبات</th><th>المطلوب</th>
+                  <th>أوفر استوك</th><th>الخصم</th><th>آخر خصم</th><th>المرجح</th>
+                  <th>الفرق</th><th>التحليل</th>
+                </tr>
+              </thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>`;
+      };
+
+      document.getElementById('searchOS').oninput = render;
+      document.getElementById('filterAnalysisOS').onchange = render;
+
+      document.getElementById('btnRunOverStock').onclick = async ()=>{
+        const btn = document.getElementById('btnRunOverStock');
+        const zRec = document.getElementById('zoneRecOS');
+        const zCol = document.getElementById('zoneColOS');
+        const zBal = document.getElementById('zoneBalOS');
+        const zOS = document.getElementById('zoneOS');
+
+        if(!zCol._file){ showToast('❌ ملف المجمع إلزامي','error'); zCol.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+        if(!zOS._file){ showToast('❌ ملف أوفر استوك إلزامي','error'); zOS.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+
+        setLoading(btn, true);
+        try{
+          currentRows = await Matching.runOverStock(zRec._file, zCol._file, zBal._file, zOS._file);
+          App.branchesData[dataKey] = { ...(App.branchesData[dataKey]||{}), overStock: currentRows };
+          App.saveData();
+          render();
+          showToast('تم حساب أوفر استوك','success');
+        }catch(err){ showToast(err.message || 'حدث خطأ','error'); }
+        setLoading(btn, false);
+      };
+
+      document.getElementById('btnClearOS').onclick = async ()=>{
+        if(await confirmModal('حذف','حذف بيانات أوفر استوك؟')){
+          currentRows = [];
+          document.getElementById('osResults').innerHTML = '';
+          Excel.resetAllZones();
+          if(App.branchesData[dataKey]) delete App.branchesData[dataKey].overStock;
+          App.saveData();
+          showToast('تم الحذف','success');
+        }
+      };
+
+      document.getElementById('exportOS').onclick = ()=>{
+        if(!currentRows.length){ showToast('لا توجد بيانات','error'); return; }
+        const out = currentRows.map(r=>({
+          'الكود': r.code, 'الاسم': r.name, 'الصنف': r.name2, 'الكاتب': r.writer,
+          'ك مخزون': r.stock, 'ك البيع': r.netSale, 'الطلبات': r.orders, 'المطلوب': r.required,
+          'أوفر استوك': r.overStock, 'الخصم': r.discount, 'آخر خصم': r.lastDiscount,
+          'المرجح': r.weighted, 'الفرق': r.diff, 'التحليل': r.analysis
+        }));
+        Excel.download(out, 'أوفر_استوك.xlsx', 'أوفر استوك');
+      };
+      return;
+    }
   },
 
   uploadZone(id, label, requiredColumns = null, icon = 'fa-cloud-arrow-up'){
@@ -978,12 +1111,13 @@ const Dashboard = {
   renderAdminHome(){
     const el = document.getElementById('admin-home');
     const branchesCount = Object.keys(BRANCHES).length;
-    let totalItems = 0, totalWhole = 0, totalFax = 0, totalFilter = 0;
+    let totalItems = 0, totalWhole = 0, totalFax = 0, totalFilter = 0, totalOS = 0;
     Object.values(App.branchesData).forEach(b=>{
       totalItems += (b.itemsMatch||[]).length;
       totalWhole += (b.wholeDiff||[]).length;
       totalFax += (b.faxDiff||[]).length;
       totalFilter += ((b.faxFilter?.masfar||[]).length + (b.faxFilter?.هيسفر||[]).length);
+      totalOS += (b.overStock||[]).length;
     });
     el.innerHTML = `
       <div class="stats-grid">
@@ -992,14 +1126,15 @@ const Dashboard = {
         <div class="stat-card"><i class="fas fa-people-arrows"></i><div class="stat-num">${totalWhole}</div><div class="stat-label">فرق الجملة</div></div>
         <div class="stat-card"><i class="fas fa-receipt"></i><div class="stat-num">${totalFax}</div><div class="stat-label">فرق الفاكسات</div></div>
         <div class="stat-card"><i class="fas fa-filter"></i><div class="stat-num">${totalFilter}</div><div class="stat-label">مصفر الفاكسات</div></div>
+        <div class="stat-card"><i class="fas fa-boxes-packing"></i><div class="stat-num">${totalOS}</div><div class="stat-label">أوفر استوك</div></div>
       </div>
       <div class="card"><h3><i class="fas fa-chart-line"></i> تحليل بياني لكل الفروع</h3>
         <div class="table-wrap" style="margin-top:15px"><table>
-          <thead><tr><th>الفرع</th><th>مطابقة الأصناف</th><th>فرق الجملة</th><th>فرق الفاكسات</th><th>مصفر الفاكسات</th></tr></thead>
+          <thead><tr><th>الفرع</th><th>مطابقة</th><th>فرق الجملة</th><th>فرق الفاكسات</th><th>مصفر</th><th>أوفر استوك</th></tr></thead>
           <tbody>
           ${Object.entries(BRANCHES).map(([k,v])=>{
             const b = App.branchesData[k]||{};
-            return `<tr><td><i class="fas ${v.icon}"></i> ${v.name}</td><td>${(b.itemsMatch||[]).length}</td><td>${(b.wholeDiff||[]).length}</td><td>${(b.faxDiff||[]).length}</td><td>${((b.faxFilter?.masfar||[]).length + (b.faxFilter?.هيسفر||[]).length)}</td></tr>`;
+            return `<tr><td><i class="fas ${v.icon}"></i> ${v.name}</td><td>${(b.itemsMatch||[]).length}</td><td>${(b.wholeDiff||[]).length}</td><td>${(b.faxDiff||[]).length}</td><td>${((b.faxFilter?.masfar||[]).length + (b.faxFilter?.هيسفر||[]).length)}</td><td>${(b.overStock||[]).length}</td></tr>`;
           }).join('')}
           </tbody>
         </table></div>
@@ -1127,18 +1262,19 @@ const Dashboard = {
             <div class="stat-label">
               <i class="fas fa-table-cells-large"></i> ${(b.itemsMatch||[]).length} |
               <i class="fas fa-people-arrows"></i> ${(b.wholeDiff||[]).length} |
-              <i class="fas fa-receipt"></i> ${(b.faxDiff||[]).length}
+              <i class="fas fa-receipt"></i> ${(b.faxDiff||[]).length} |
+              <i class="fas fa-boxes-packing"></i> ${(b.overStock||[]).length}
             </div>
           </div>`;
         }).join('')}
       </div>
       <div class="card"><h3><i class="fas fa-database"></i> متابعة البيانات لكل فرع</h3>
         <div class="table-wrap"><table>
-          <thead><tr><th>الفرع</th><th>مطابقة</th><th>فرق الجملة</th><th>فرق الفاكسات</th><th>مصفر</th></tr></thead>
+          <thead><tr><th>الفرع</th><th>مطابقة</th><th>فرق الجملة</th><th>فرق الفاكسات</th><th>مصفر</th><th>أوفر استوك</th></tr></thead>
           <tbody>
           ${Object.entries(BRANCHES).map(([k,v])=>{
             const b = App.branchesData[k]||{};
-            return `<tr><td><i class="fas ${v.icon}"></i> ${v.name}</td><td>${(b.itemsMatch||[]).length}</td><td>${(b.wholeDiff||[]).length}</td><td>${(b.faxDiff||[]).length}</td><td>${((b.faxFilter?.masfar||[]).length + (b.faxFilter?.هيسفر||[]).length)}</td></tr>`;
+            return `<tr><td><i class="fas ${v.icon}"></i> ${v.name}</td><td>${(b.itemsMatch||[]).length}</td><td>${(b.wholeDiff||[]).length}</td><td>${(b.faxDiff||[]).length}</td><td>${((b.faxFilter?.masfar||[]).length + (b.faxFilter?.هيسفر||[]).length)}</td><td>${(b.overStock||[]).length}</td></tr>`;
           }).join('')}
           </tbody>
         </table></div>
