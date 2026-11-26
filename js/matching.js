@@ -132,11 +132,7 @@ const Matching = {
   },
 
   /* ============================================================
-     2) فرق الجملة — ربط صارم بالأعمدة حسب الترتيب
-     
-     الملف 1 (الربط):     [كود طيبة] [كود الفرع] [الصنف] [الخصم]
-     الملف 2 (فرق الجملة): [الكود] [المورد] [الصنف] [الخصم]
-     الملف 3 (الجملة):     [الكود] [الخصم] [الصنف]
+     2) فرق الجملة
      ============================================================ */
   async runWholeDiff(fileLink, fileWholeDiff, fileWhole){
     const d1 = await Excel.readFileAsArray(fileLink);
@@ -151,59 +147,27 @@ const Matching = {
     console.log('📊 صفوف الربط:', link.length);
     console.log('📊 صفوف فرق الجملة:', wholeDiff.length);
     console.log('📊 صفوف الجملة:', whole.length);
-    console.log('📋 رأس الربط:', linkHeaders);
-    console.log('📋 رأس فرق الجملة:', wholeDiffHeaders);
-    console.log('📋 رأس الجملة:', wholeHeaders);
     console.log('═══════════════════════════════════════');
 
     if(linkHeaders.length < 4){
-      throw new Error(`❌ ملف الربط يجب أن يحتوي على 4 أعمدة على الأقل: [كود طيبة، كود الفرع، الصنف، الخصم]. الموجود: ${linkHeaders.length} (${linkHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف الربط يجب أن يحتوي على 4 أعمدة على الأقل: [كود طيبة، كود الفرع، الصنف، الخصم]. الموجود: ${linkHeaders.length}`);
     }
     if(wholeDiffHeaders.length < 4){
-      throw new Error(`❌ ملف فرق الجملة يجب أن يحتوي على 4 أعمدة: [الكود، المورد، الصنف، الخصم]. الموجود: ${wholeDiffHeaders.length} (${wholeDiffHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف فرق الجملة يجب أن يحتوي على 4 أعمدة: [الكود، المورد، الصنف، الخصم]. الموجود: ${wholeDiffHeaders.length}`);
     }
     if(wholeHeaders.length < 3){
-      throw new Error(`❌ ملف الجملة يجب أن يحتوي على 3 أعمدة: [الكود، الخصم، الصنف]. الموجود: ${wholeHeaders.length} (${wholeHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف الجملة يجب أن يحتوي على 3 أعمدة: [الكود، الخصم، الصنف]. الموجود: ${wholeHeaders.length}`);
     }
 
-    const cLink = {
-      taibaCode:  linkHeaders[0],
-      branchCode: linkHeaders[1],
-      name:       linkHeaders[2],
-      discount:   linkHeaders[3]
-    };
-
-    const cWholeDiff = {
-      code:     wholeDiffHeaders[0],
-      supplier: wholeDiffHeaders[1],
-      name:     wholeDiffHeaders[2],
-      discount: wholeDiffHeaders[3]
-    };
-
-    const cWhole = {
-      code:     wholeHeaders[0],
-      discount: wholeHeaders[1],
-      name:     wholeHeaders[2]
-    };
-
-    console.log('✅ الربط:', cLink);
-    console.log('✅ فرق الجملة:', cWholeDiff);
-    console.log('✅ الجملة:', cWhole);
+    const cLink = { taibaCode: linkHeaders[0], branchCode: linkHeaders[1], name: linkHeaders[2], discount: linkHeaders[3] };
+    const cWholeDiff = { code: wholeDiffHeaders[0], supplier: wholeDiffHeaders[1], name: wholeDiffHeaders[2], discount: wholeDiffHeaders[3] };
+    const cWhole = { code: wholeHeaders[0], discount: wholeHeaders[1], name: wholeHeaders[2] };
 
     const wholeDiffMap = {};
-    wholeDiff.forEach(r=>{
-      const k = normalize(r[cWholeDiff.code]);
-      if(k && !wholeDiffMap[k]) wholeDiffMap[k] = r;
-    });
+    wholeDiff.forEach(r=>{ const k = normalize(r[cWholeDiff.code]); if(k && !wholeDiffMap[k]) wholeDiffMap[k] = r; });
 
     const wholeMap = {};
-    whole.forEach(r=>{
-      const k = normalize(r[cWhole.code]);
-      if(k && !wholeMap[k]) wholeMap[k] = r;
-    });
-
-    console.log(`🔎 فهرس فرق الجملة: ${Object.keys(wholeDiffMap).length} كود`);
-    console.log(`🔎 فهرس الجملة: ${Object.keys(wholeMap).length} كود`);
+    whole.forEach(r=>{ const k = normalize(r[cWhole.code]); if(k && !wholeMap[k]) wholeMap[k] = r; });
 
     const result = link.map(r=>{
       const taibaCode = String(r[cLink.taibaCode] ?? '').trim();
@@ -222,144 +186,111 @@ const Matching = {
 
       const diff = wholeDiscount - discount;
 
-      return {
-        taibaCode,
-        branchCode,
-        name,
-        discount,
-        supplier,
-        wholeDiscount,
-        wholeName,
-        diff,
-        matchedWholeDiff: !!wdRow,
-        matchedWhole: !!wRow
-      };
+      return { taibaCode, branchCode, name, discount, supplier, wholeDiscount, wholeName, diff,
+        matchedWholeDiff: !!wdRow, matchedWhole: !!wRow };
     });
 
     result.sort((a, b) => b.diff - a.diff);
-
-    const matchedBoth = result.filter(r=>r.matchedWholeDiff && r.matchedWhole).length;
-    const matchedWD = result.filter(r=>r.matchedWholeDiff).length;
-    const matchedW = result.filter(r=>r.matchedWhole).length;
-    console.log(`✅ ربط فرق الجملة: ${matchedWD}/${result.length}`);
-    console.log(`✅ ربط الجملة: ${matchedW}/${result.length}`);
-    console.log(`✅ ربط كامل (الاثنين): ${matchedBoth}/${result.length}`);
-
     return result;
   },
 
   /* ============================================================
-     3) فرق الفاكسات — مطابقة تامة فقط
-     
-     الملف 1 (فرق الفاكسات): [الصنف] [الاسم] [الكمية] [الكاتب] [الخصم]
-     الملف 2 (الفاكسات):      [الصنف] [خصم الفاكسات] [المورد]
+     3) فرق الفاكسات — مطابقة تامة فقط + التكرار والمخازن والخصومات
      ============================================================ */
   async runFaxDiff(fileFaxDiff, fileFax){
     const d1 = await Excel.readFileAsArray(fileFaxDiff);
     const d2 = await Excel.readFileAsArray(fileFax);
 
-    const diffRows = d1.rows;
-    const diffHeaders = d1.headers;
-    const faxRows = d2.rows;
-    const faxHeaders = d2.headers;
-
-    console.log('═══════════════════════════════════════');
-    console.log('📊 صفوف فرق الفاكسات:', diffRows.length);
-    console.log('📊 صفوف الفاكسات:', faxRows.length);
-    console.log('📋 رأس فرق الفاكسات:', diffHeaders);
-    console.log('📋 رأس الفاكسات:', faxHeaders);
-    console.log('═══════════════════════════════════════');
+    const diffRows = d1.rows, diffHeaders = d1.headers;
+    const faxRows = d2.rows, faxHeaders = d2.headers;
 
     if(diffHeaders.length < 5){
-      throw new Error(`❌ ملف فرق الفاكسات يجب أن يحتوي على 5 أعمدة على الأقل: [الصنف، الاسم، الكمية، الكاتب، الخصم]. الموجود: ${diffHeaders.length} (${diffHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف فرق الفاكسات يجب أن يحتوي على 5 أعمدة: [الصنف، الاسم، الكمية، الكاتب، الخصم]. الموجود: ${diffHeaders.length}`);
     }
     if(faxHeaders.length < 3){
-      throw new Error(`❌ ملف الفاكسات يجب أن يحتوي على 3 أعمدة: [الصنف، خصم الفاكسات، المورد]. الموجود: ${faxHeaders.length} (${faxHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف الفاكسات يجب أن يحتوي على 3 أعمدة: [الصنف، خصم الفاكسات، المورد]. الموجود: ${faxHeaders.length}`);
     }
 
-    const cDiff = {
-      name:     diffHeaders[0],
-      store:    diffHeaders[1],
-      qty:      diffHeaders[2],
-      writer:   diffHeaders[3],
-      discount: diffHeaders[4]
-    };
+    const cDiff = { name: diffHeaders[0], store: diffHeaders[1], qty: diffHeaders[2], writer: diffHeaders[3], discount: diffHeaders[4] };
+    const cFax = { name: faxHeaders[0], discount: faxHeaders[1], supplier: faxHeaders[2] };
 
-    const cFax = {
-      name:     faxHeaders[0],
-      discount: faxHeaders[1],
-      supplier: faxHeaders[2]
-    };
-
-    console.log('✅ فرق الفاكسات:', cDiff);
-    console.log('✅ الفاكسات:', cFax);
-
-    const faxNormMap = {};
+    // فهرس الفاكسات (تجميع التكرار والمخازن والخصومات)
+    const faxGroups = {};
 
     faxRows.forEach(r=>{
       const rawName = String(r[cFax.name] ?? '').trim();
       if(!rawName) return;
       const normName = normalize(rawName);
       if(!normName) return;
-      if(!faxNormMap[normName]) faxNormMap[normName] = r;
+
+      const discount = toNum(r[cFax.discount]);
+      const supplier = String(r[cFax.supplier] ?? '').trim() || '—';
+
+      if(!faxGroups[normName]){
+        faxGroups[normName] = {
+          rawName: rawName,
+          stores: new Set(),
+          storeDiscounts: {}
+        };
+      }
+
+      faxGroups[normName].stores.add(supplier);
+
+      if(!faxGroups[normName].storeDiscounts[supplier]){
+        faxGroups[normName].storeDiscounts[supplier] = [];
+      }
+      faxGroups[normName].storeDiscounts[supplier].push(discount);
     });
 
-    console.log(`🔎 فهرس الفاكسات (تام فقط): ${Object.keys(faxNormMap).length} صنف فريد`);
+    console.log(`🔎 فهرس الفاكسات: ${Object.keys(faxGroups).length} صنف فريد`);
 
+    // بناء النتيجة مع بيانات التكرار
     const result = diffRows.map(r=>{
-      const rawName = String(r[cDiff.name] ?? '').trim();
-      const name = rawName;
+      const name = String(r[cDiff.name] ?? '').trim();
       const storeName = String(r[cDiff.store] ?? '').trim();
       const qty = toNum(r[cDiff.qty]);
       const writer = String(r[cDiff.writer] ?? '').trim();
       const discount = toNum(r[cDiff.discount]);
-      const normName = normalize(rawName);
 
-      const faxRow = faxNormMap[normName] || null;
-      const matched = !!faxRow;
+      const faxGroup = faxGroups[normalize(name)] || null;
+      const matched = !!faxGroup;
 
       let faxDiscount = null;
       let supplier = '_____';
+      let repeat = 0;
+      let storesText = '—';
+      let discountsText = '—';
 
-      if(faxRow){
-        faxDiscount = toNum(faxRow[cFax.discount]);
-        supplier = String(faxRow[cFax.supplier] ?? '_____') || '_____';
+      if(faxGroup){
+        const storesArr = Array.from(faxGroup.stores);
+        repeat = storesArr.length;
+        supplier = storesArr.join(' | ') || '_____';
+        storesText = storesArr.join(' | ') || '—';
+
+        const allDiscounts = [];
+        storesArr.forEach(store => {
+          const discounts = faxGroup.storeDiscounts[store] || [];
+          discounts.forEach(d => allDiscounts.push(d));
+        });
+        discountsText = allDiscounts.join(' | ') || '—';
+
+        faxDiscount = allDiscounts.length ? allDiscounts[0] : null;
       }
 
       const diff = (faxDiscount != null) ? (faxDiscount - discount) : null;
 
       return {
-        name,
-        storeName,
-        qty,
-        writer,
-        discount,
-        faxDiscount,
-        supplier,
-        diff,
-        matched
+        name, storeName, qty, writer, discount, faxDiscount, supplier, diff, matched,
+        repeat, stores: storesText, discounts: discountsText
       };
     });
 
     result.sort((a, b) => (b.diff ?? -Infinity) - (a.diff ?? -Infinity));
-
-    const matchedCount = result.filter(r=>r.matched).length;
-    const unmatchedCount = result.length - matchedCount;
-    console.log(`✅ مطابقة تامة: ${matchedCount}/${result.length}`);
-    console.log(`❌ غير موجود في ملف الفاكسات: ${unmatchedCount}`);
-
     return result;
   },
 
   /* ============================================================
-     4) مصفر الفاكسات — ربط صارم بالأعمدة حسب الترتيب
-     
-     الملف 1 (الوارد):   [الكود] [الكمية] [الصنف]
-     الملف 2 (الطلبات):  [الكود] [الكمية] [الصنف]
-     الملف 3 (المجمع):   [الكود] [الاسم] [س البيع] [المرجح] [ك مخزون] [ك صافي بيع]
-     الملف 4 (الفاكسات): [الصنف] [الخصم] [المورد]
-     
-     ⚠️ شرط هيصفر: المطلوب > 5 (وليس > 0)
+     4) مصفر الفاكسات — 4 ملفات + التكرار والمخازن والخصومات
      ============================================================ */
   async runFaxFilter(fileReceived, fileOrders, fileCollector, fileFax){
     const dCol = await Excel.readFileAsArray(fileCollector);
@@ -378,82 +309,74 @@ const Matching = {
     console.log('📊 صفوف الفاكسات:', faxRows.length);
     console.log('📊 صفوف الوارد:', received.length);
     console.log('📊 صفوف الطلبات:', orders.length);
-    console.log('📋 رأس المجمع:', colHeaders);
-    console.log('📋 رأس الفاكسات:', faxHeaders);
-    console.log('📋 رأس الوارد:', recHeaders);
-    console.log('📋 رأس الطلبات:', ordHeaders);
     console.log('═══════════════════════════════════════');
 
     if(colHeaders.length < 6){
-      throw new Error(`❌ ملف المجمع يجب أن يحتوي على 6 أعمدة: [الكود، الاسم، س البيع، المرجح، ك مخزون، ك صافي بيع]. الموجود: ${colHeaders.length} (${colHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف المجمع يجب أن يحتوي على 6 أعمدة: [الكود، الاسم، س البيع، المرجح، ك مخزون، ك صافي بيع]. الموجود: ${colHeaders.length}`);
     }
     if(faxHeaders.length < 3){
-      throw new Error(`❌ ملف الفاكسات يجب أن يحتوي على 3 أعمدة: [الصنف، الخصم، المورد]. الموجود: ${faxHeaders.length} (${faxHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف الفاكسات يجب أن يحتوي على 3 أعمدة: [الصنف، الخصم، المورد]. الموجود: ${faxHeaders.length}`);
     }
     if(received.length && recHeaders.length < 3){
-      throw new Error(`❌ ملف الوارد يجب أن يحتوي على 3 أعمدة: [الكود، الكمية، الصنف]. الموجود: ${recHeaders.length}`);
+      throw new Error(`❌ ملف الوارد يجب أن يحتوي على 3 أعمدة: [الكود، الكمية، الصنف]`);
     }
     if(orders.length && ordHeaders.length < 3){
-      throw new Error(`❌ ملف الطلبات يجب أن يحتوي على 3 أعمدة: [الكود، الكمية، الصنف]. الموجود: ${ordHeaders.length}`);
+      throw new Error(`❌ ملف الطلبات يجب أن يحتوي على 3 أعمدة: [الكود، الكمية، الصنف]`);
     }
 
-    const cCol = {
-      code:     colHeaders[0],
-      name:     colHeaders[1],
-      salePrice: colHeaders[2],
-      weighted: colHeaders[3],
-      stock:    colHeaders[4],
-      netSale:  colHeaders[5]
-    };
+    const cCol = { code: colHeaders[0], name: colHeaders[1], salePrice: colHeaders[2], weighted: colHeaders[3], stock: colHeaders[4], netSale: colHeaders[5] };
+    const cFax = { name: faxHeaders[0], discount: faxHeaders[1], supplier: faxHeaders[2] };
+    const cRec = received.length ? { code: recHeaders[0], qty: recHeaders[1], name: recHeaders[2] } : null;
+    const cOrd = orders.length ? { code: ordHeaders[0], qty: ordHeaders[1], name: ordHeaders[2] } : null;
 
-    const cFax = {
-      name:     faxHeaders[0],
-      discount: faxHeaders[1],
-      supplier: faxHeaders[2]
-    };
-
-    const cRec = received.length ? {
-      code: recHeaders[0],
-      qty:  recHeaders[1],
-      name: recHeaders[2]
-    } : null;
-
-    const cOrd = orders.length ? {
-      code: ordHeaders[0],
-      qty:  ordHeaders[1],
-      name: ordHeaders[2]
-    } : null;
-
-    console.log('✅ المجمع:', cCol);
-    console.log('✅ الفاكسات:', cFax);
-    if(cRec) console.log('✅ الوارد:', cRec);
-    if(cOrd) console.log('✅ الطلبات:', cOrd);
-
-    // فهرس الوارد (الكود → مجموع الكميات)
+    // فهرس الوارد والطلبات
     const recMap = {};
-    received.forEach(r=>{
-      const k = normalize(r[cRec.code]);
-      if(k) recMap[k] = (recMap[k] || 0) + toNum(r[cRec.qty]);
-    });
+    if(cRec){
+      received.forEach(r=>{
+        const k = normalize(r[cRec.code]);
+        if(k) recMap[k] = (recMap[k] || 0) + toNum(r[cRec.qty]);
+      });
+    }
 
-    // فهرس الطلبات (الكود → مجموع الكميات)
     const ordMap = {};
-    orders.forEach(r=>{
-      const k = normalize(r[cOrd.code]);
-      if(k) ordMap[k] = (ordMap[k] || 0) + toNum(r[cOrd.qty]);
-    });
+    if(cOrd){
+      orders.forEach(r=>{
+        const k = normalize(r[cOrd.code]);
+        if(k) ordMap[k] = (ordMap[k] || 0) + toNum(r[cOrd.qty]);
+      });
+    }
 
-    // فهرس الفاكسات (الصنف → صف)
-    const faxMap = {};
+    // فهرس الفاكسات (تجميع التكرار والمخازن والخصومات)
+    const faxGroups = {};
+
     faxRows.forEach(r=>{
-      const k = normalize(r[cFax.name]);
-      if(k && !faxMap[k]) faxMap[k] = r;
+      const rawName = String(r[cFax.name] ?? '').trim();
+      if(!rawName) return;
+      const normName = normalize(rawName);
+      if(!normName) return;
+
+      const discount = toNum(r[cFax.discount]);
+      const supplier = String(r[cFax.supplier] ?? '').trim() || '—';
+
+      if(!faxGroups[normName]){
+        faxGroups[normName] = {
+          rawName: rawName,
+          stores: new Set(),
+          storeDiscounts: {}
+        };
+      }
+
+      faxGroups[normName].stores.add(supplier);
+
+      if(!faxGroups[normName].storeDiscounts[supplier]){
+        faxGroups[normName].storeDiscounts[supplier] = [];
+      }
+      faxGroups[normName].storeDiscounts[supplier].push(discount);
     });
 
-    console.log(`🔎 فهرس الوارد: ${Object.keys(recMap).length} كود`);
-    console.log(`🔎 فهرس الطلبات: ${Object.keys(ordMap).length} كود`);
-    console.log(`🔎 فهرس الفاكسات: ${Object.keys(faxMap).length} صنف`);
+    console.log(`🔎 فهرس الفاكسات: ${Object.keys(faxGroups).length} صنف فريد`);
 
+    // بناء النتيجة
     const result = collector.map(r=>{
       const code = String(r[cCol.code] ?? '').trim();
       const name = String(r[cCol.name] ?? '').trim();
@@ -465,27 +388,42 @@ const Matching = {
       const recQty = recMap[normalize(code)] || 0;
       const ordQty = ordMap[normalize(code)] || 0;
 
-      const fRow = faxMap[normalize(name)] || null;
-      const faxDiscount = fRow ? toNum(fRow[cFax.discount]) : null;
-      const supplier = fRow ? String(fRow[cFax.supplier] ?? '') : '';
+      const faxGroup = faxGroups[normalize(name)] || null;
+      const matchedFax = !!faxGroup;
+
+      let faxDiscount = null;
+      let supplier = '_____';
+      let repeat = 0;
+      let storesText = '—';
+      let discountsText = '—';
+
+      if(faxGroup){
+        const storesArr = Array.from(faxGroup.stores);
+        repeat = storesArr.length;
+        supplier = storesArr.join(' | ') || '_____';
+        storesText = storesArr.join(' | ') || '—';
+
+        const allDiscounts = [];
+        storesArr.forEach(store => {
+          const discounts = faxGroup.storeDiscounts[store] || [];
+          discounts.forEach(d => allDiscounts.push(d));
+        });
+        discountsText = allDiscounts.join(' | ') || '—';
+
+        faxDiscount = allDiscounts.length ? allDiscounts[0] : null;
+      }
 
       const totalQty = stock + recQty + ordQty;
       const required = netSale > totalQty ? (netSale - totalQty) : 0;
 
       return {
-        code,
-        name,
-        salePrice,
-        weighted,
-        stock,
-        recQty,
-        ordQty,
-        totalQty,
-        netSale,
-        required,
+        code, name, salePrice, weighted, stock, recQty, ordQty, totalQty, netSale, required,
         supplier: supplier || '_____',
         faxDiscount: faxDiscount != null ? faxDiscount : '_____',
-        matchedFax: !!fRow
+        matchedFax,
+        repeat,
+        stores: storesText,
+        discounts: discountsText
       };
     });
 
@@ -493,10 +431,7 @@ const Matching = {
     const withFax = result.filter(r=>r.matchedFax).length;
     console.log(`✅ ربط الفاكسات: ${withFax}/${total}`);
 
-    // === مصفر الفاكسات: المطلوب ≠ 0 + إجمالي الكمية ≤ 10 ===
     const masfar = result.filter(r => r.required !== 0 && r.totalQty <= 10);
-
-    // === هيصفر الفاكسات: المطلوب > 5 + إجمالي الكمية بين 11 و 2000 ===
     const هيسفر = result.filter(r => r.required > 5 && r.totalQty >= 11 && r.totalQty <= 2000);
 
     console.log(`📊 مصفر: ${masfar.length} صف`);
@@ -506,76 +441,30 @@ const Matching = {
   },
 
   /* ============================================================
-   5) المصفر العام — ربط صارم بالأعمدة حسب الترتيب
-   ============================================================ */
+     5) المصفر العام — 3 ملفات
+     ============================================================ */
   async runGeneralFilter(fileCollector, fileReceived, fileOrders){
-    // === قراءة المجمع (إلزامي) ===
     const dCol = await Excel.readFileAsArray(fileCollector);
     const collector = dCol.rows, colHeaders = dCol.headers;
 
-    // === قراءة الوارد والطلبات (اختياري) ===
     const dRec = fileReceived ? await Excel.readFileAsArray(fileReceived) : { headers: [], rows: [] };
     const dOrd = fileOrders ? await Excel.readFileAsArray(fileOrders) : { headers: [], rows: [] };
     const received = dRec.rows, recHeaders = dRec.headers;
     const orders = dOrd.rows, ordHeaders = dOrd.headers;
 
-    console.log('═══════════════════════════════════════');
-    console.log('📊 صفوف المجمع:', collector.length);
-    console.log('📊 صفوف الوارد:', received.length);
-    console.log('📊 صفوف الطلبات:', orders.length);
-    console.log('📋 رأس المجمع:', colHeaders);
-    console.log('📋 رأس الوارد:', recHeaders);
-    console.log('📋 رأس الطلبات:', ordHeaders);
-    console.log('═══════════════════════════════════════');
-
     if(colHeaders.length < 6){
-      throw new Error(`❌ ملف المجمع يجب أن يحتوي على 6 أعمدة: [الكود، الاسم، س البيع، المرجح، ك مخزون، ك صافي بيع]. الموجود: ${colHeaders.length} (${colHeaders.join(' | ')})`);
-    }
-    if(received.length && recHeaders.length < 3){
-      throw new Error(`❌ ملف الوارد يجب أن يحتوي على 3 أعمدة: [الكود، الكمية، الصنف]. الموجود: ${recHeaders.length} (${recHeaders.join(' | ')})`);
-    }
-    if(orders.length && ordHeaders.length < 3){
-      throw new Error(`❌ ملف الطلبات يجب أن يحتوي على 3 أعمدة: [الكود، الكمية، الصنف]. الموجود: ${ordHeaders.length} (${ordHeaders.join(' | ')})`);
+      throw new Error(`❌ ملف المجمع يجب أن يحتوي على 6 أعمدة. الموجود: ${colHeaders.length}`);
     }
 
-    const cCol = {
-      code:      colHeaders[0],
-      name:      colHeaders[1],
-      salePrice: colHeaders[2],
-      weighted:  colHeaders[3],
-      stock:     colHeaders[4],
-      netSale:   colHeaders[5]
-    };
-
+    const cCol = { code: colHeaders[0], name: colHeaders[1], salePrice: colHeaders[2], weighted: colHeaders[3], stock: colHeaders[4], netSale: colHeaders[5] };
     const cRec = received.length ? { code: recHeaders[0], qty: recHeaders[1], name: recHeaders[2] } : null;
     const cOrd = orders.length ? { code: ordHeaders[0], qty: ordHeaders[1], name: ordHeaders[2] } : null;
 
-    console.log('✅ المجمع:', cCol);
-    if(cRec) console.log('✅ الوارد:', cRec);
-    if(cOrd) console.log('✅ الطلبات:', cOrd);
-
-    // فهرس الوارد (الكود → مجموع الكميات)
     const recMap = {};
-    if(cRec){
-      received.forEach(r=>{
-        const k = normalize(r[cRec.code]);
-        if(k) recMap[k] = (recMap[k] || 0) + toNum(r[cRec.qty]);
-      });
-    }
-
-    // فهرس الطلبات (الكود → مجموع الكميات)
+    if(cRec) received.forEach(r=>{ const k = normalize(r[cRec.code]); if(k) recMap[k] = (recMap[k] || 0) + toNum(r[cRec.qty]); });
     const ordMap = {};
-    if(cOrd){
-      orders.forEach(r=>{
-        const k = normalize(r[cOrd.code]);
-        if(k) ordMap[k] = (ordMap[k] || 0) + toNum(r[cOrd.qty]);
-      });
-    }
+    if(cOrd) orders.forEach(r=>{ const k = normalize(r[cOrd.code]); if(k) ordMap[k] = (ordMap[k] || 0) + toNum(r[cOrd.qty]); });
 
-    console.log(`🔎 فهرس الوارد: ${Object.keys(recMap).length} كود`);
-    console.log(`🔎 فهرس الطلبات: ${Object.keys(ordMap).length} كود`);
-
-    // بناء الصفوف الناتجة
     const result = collector.map(r=>{
       const code = String(r[cCol.code] ?? '').trim();
       const name = String(r[cCol.name] ?? '').trim();
@@ -593,19 +482,106 @@ const Matching = {
       return { code, name, salePrice, weighted, stock, recQty, ordQty, totalQty, netSale, required };
     });
 
-    console.log(`✅ إجمالي الأصناف: ${result.length}`);
-
-    // === المصفر: المطلوب ≠ 0 + إجمالي الكمية ≤ 10 ===
     const masfar = result.filter(r => r.required !== 0 && r.totalQty <= 10);
-
-    // === هيصفر: المطلوب > 5 + إجمالي الكمية بين 11 و 2000 ===
     const هيسفر = result.filter(r => r.required > 5 && r.totalQty >= 11 && r.totalQty <= 2000);
-
-    console.log(`📊 المصفر: ${masfar.length} صف`);
-    console.log(`📊 هيصفر: ${هيسفر.length} صف`);
 
     return { all: result, masfar, هيسفر };
   },
+
+  /* ============================================================
+     6) أوفر استوك — 4 ملفات
+     ============================================================ */
+  async runOverStock(fileReceived, fileCollector, fileBalances, fileOverStock){
+    const dCol = await Excel.readFileAsArray(fileCollector);
+    const collector = dCol.rows, colHeaders = dCol.headers;
+
+    const dOS = await Excel.readFileAsArray(fileOverStock);
+    const osRows = dOS.rows, osHeaders = dOS.headers;
+
+    const dRec = fileReceived ? await Excel.readFileAsArray(fileReceived) : { headers: [], rows: [] };
+    const received = dRec.rows, recHeaders = dRec.headers;
+
+    const dBal = fileBalances ? await Excel.readFileAsArray(fileBalances) : { headers: [], rows: [] };
+    const balances = dBal.rows, balHeaders = dBal.headers;
+
+    console.log('═══════════════════════════════════════');
+    console.log('📊 صفوف المجمع:', collector.length);
+    console.log('📊 صفوف أوفر استوك:', osRows.length);
+    console.log('📊 صفوف الوارد:', received.length);
+    console.log('📊 صفوف الأرصدة:', balances.length);
+    console.log('═══════════════════════════════════════');
+
+    if(colHeaders.length < 6){
+      throw new Error(`❌ ملف المجمع يجب أن يحتوي على 6 أعمدة. الموجود: ${colHeaders.length}`);
+    }
+    if(osHeaders.length < 6){
+      throw new Error(`❌ ملف أوفر استوك يجب أن يحتوي على 6 أعمدة. الموجود: ${osHeaders.length}`);
+    }
+
+    const cCol = { code: colHeaders[0], name: colHeaders[1], salePrice: colHeaders[2], weighted: colHeaders[3], stock: colHeaders[4], netSale: colHeaders[5] };
+    const cOS = { code: osHeaders[0], name: osHeaders[1], name2: osHeaders[2], writer: osHeaders[3], orders: osHeaders[4], discount: osHeaders[5] };
+    const cRec = received.length ? { code: recHeaders[0], qty: recHeaders[1], name: recHeaders[2] } : null;
+    const cBal = balances.length ? { code: balHeaders[0], weighted: balHeaders[1], name: balHeaders[2] } : null;
+
+    const recMap = {};
+    if(cRec) received.forEach(r=>{ const k = normalize(r[cRec.code]); if(k) recMap[k] = (recMap[k] || 0) + toNum(r[cRec.qty]); });
+
+    const colMap = {};
+    collector.forEach(r=>{
+      const code = String(r[cCol.code] ?? '').trim();
+      const k = normalize(code);
+      if(!k) return;
+
+      const name = String(r[cCol.name] ?? '').trim();
+      const salePrice = toNum(r[cCol.salePrice]);
+      const weighted = toNum(r[cCol.weighted]);
+      const stock = toNum(r[cCol.stock]);
+      const netSale = toNum(r[cCol.netSale]);
+
+      const recQty = recMap[k] || 0;
+      const totalQty = stock + recQty;
+      const required = netSale > totalQty ? (netSale - totalQty) : 0;
+
+      colMap[k] = { code, name, salePrice, weighted, stock, recQty, totalQty, netSale, required };
+    });
+
+    const balMap = {};
+    if(cBal) balances.forEach(r=>{ const k = normalize(r[cBal.code]); if(k) balMap[k] = toNum(r[cBal.weighted]); });
+
+    const result = osRows.map(r=>{
+      const code = String(r[cOS.code] ?? '').trim();
+      const name = String(r[cOS.name] ?? '').trim();
+      const name2 = String(r[cOS.name2] ?? '').trim();
+      const writer = String(r[cOS.writer] ?? '').trim();
+      const orders = toNum(r[cOS.orders]);
+      const discount = toNum(r[cOS.discount]);
+
+      const k = normalize(code);
+      const colData = colMap[k] || null;
+
+      const stock = colData ? colData.totalQty : 0;
+      const netSale = colData ? colData.netSale : 0;
+      const required = colData ? colData.required : 0;
+      const weighted = colData ? colData.weighted : 0;
+
+      const overStock = orders > required ? (orders - required) : 0;
+      const lastDiscount = balMap[k] || 0;
+      const diff = weighted - discount;
+
+      let analysis = '';
+      if(required === 0 && stock === 0) analysis = 'استوك عادي';
+      else if(required === 0 && stock > netSale) analysis = 'استوك للصنف';
+      else if(Math.abs(stock - netSale) <= Math.max(5, netSale * 0.1) && weighted > discount) analysis = 'استوك للصنف';
+      else if(overStock > 0) analysis = 'أوفر استوك';
+      else analysis = 'مراجعة';
+
+      return { code, name, name2, writer, orders, discount, stock, netSale, required, overStock, lastDiscount, weighted, diff, analysis, matchedCol: !!colData };
+    });
+
+    const filtered = result.filter(r => r.diff > -2);
+    return filtered;
+  },
+
   /* ============================================================
      اكتشاف أعمدة دقيق
      ============================================================ */
