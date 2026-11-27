@@ -1,136 +1,381 @@
 const Matching = {
 
-  /* ============================================================
-     1) مطابقة الأصناف
-     ============================================================ */
-  async runItemsMatch(fileBranch, fileMatch){
-    const rowsBranch = await Excel.readFile(fileBranch);
-    const rowsMatch = await Excel.readFile(fileMatch);
-    if(!rowsBranch.length || !rowsMatch.length) throw new Error('أحد الملفين فارغ');
+/* ============================================================
+   1-A) مطابقة الأصناف — وضع "رفع جميع المخازن"
+   ============================================================ */
+async runItemsMatchAllStores(files){
+  const startTime = performance.now();
+  console.log('═══════════════════════════════════════');
+  console.log('📊 عدد الملفات (المخازن):', files.length);
 
-    const mapBranch = this.detectColumns(rowsBranch[0], {
-      code:     ['كود','كود الصنف','الكود','code','item code','itemcode','رقم الصنف'],
-      name:     ['صنف','اسم الصنف','الصنف','name','item name','itemname','الاسم','اسم المنتج','المنتج'],
-      price:    ['سعر','السعر','price','سعر البيع','unit price','سعر الجمهور'],
-      discount: []
+  if(!files.length) throw new Error('❌ يرجى رفع ملف واحد على الأقل');
+
+  // ===== 1) قراءة كل الملفات =====
+  const storesData = [];
+  for(let i = 0; i < files.length; i++){
+    const f = files[i];
+    const storeName = f.name.replace(/\.(xlsx|xls|csv)$/i, '').trim();
+    try{
+      const d = await Excel.readFileAsArray(f);
+      const rows = d.rows;
+      const headers = d.headers;
+
+      if(headers.length < 3){
+        console.warn(`⚠️ ${storeName}: الملف لا يحتوي على 3 أعمدة — تخطي`);
+        continue;
+      }
+
+      const cName  = headers[0];
+      const cPrice = headers[1];
+      const cDisc  = headers[2];
+
+      const items = rows.map(r=>({
+        name:  String(r[cName]  ?? '').trim(),
+        price: toNum(r[cPrice]),
+        disc:  toNum(r[cDisc])
+      })).filter(x => x.name);
+
+      storesData.push({ name: storeName, items });
+      console.log(`✅ ${storeName}: ${items.length} صنف`);
+    }catch(err){
+      console.error(`❌ ${storeName}: ${err.message}`);
+    }
+  }
+
+  if(!storesData.length) throw new Error('❌ لم يتم قراءة أي ملف بنجاح');
+
+  // ===== 2) تنظيف وتطبيع =====
+  const cleanPrice = (str)=>{
+    if(str == null) return '';
+    let s = String(str).trim();
+    s = s.replace(/\/\s*\d+(\.\d+)?\s*(جنيه|جنية|ج|جم|جنيهًا)\s*$/gi, '');
+    s = s.replace(/ق\s*\/\s*\d+(\.\d+)?\s*(جنيه|جنية|ج|جم|جنيهًا)?\s*$/gi, '');
+    s = s.replace(/\/\s*\d+(\.\d+)?\s*(جنيه|جنية|ج|جم|جنيهًا)?/gi, '');
+    s = s.replace(/\b\d+(\.\d+)?\s*(جنيه|جنية|جنيهًا)\b/gi, '');
+    return s.trim();
+  };
+
+  const removeExtras = (str)=>{
+    if(!str) return '';
+    let s = str;
+    const extras = ['س ج','سج','س ق','سق','جديد','جديده','جديدة','قديم','قديمه','قديمة',
+      'اقراص','قرص','كبسول','كبسوله','امبول','امبولات','امبوله','عرض','عروض','سعر','جنيه','جنية'];
+    extras.forEach(w => {
+      s = s.replace(new RegExp(`(^|\\s)${w}(\\s|$)`, 'gi'), ' ');
     });
+    return s.replace(/\s+/g, ' ').trim();
+  };
 
-    const mapMatch = this.detectColumns(rowsMatch[0], {
-      code:     [],
-      name:     ['صنف','اسم الصنف','الصنف','name','item name','itemname','الاسم','اسم المنتج','المنتج'],
-      price:    ['سعر','السعر','price','سعر البيع','unit price','سعر الجمهور'],
-      discount: ['خصم','الخصم','discount','خصم الصنف','نسبة الخصم','discount %','disc','قيمة الخصم']
+  const normalizeText = (str)=>{
+    if(str == null) return '';
+    let s = String(str).trim().toLowerCase();
+    s = s.replace(/[أإآٱ]/g,'ا').replace(/[ىئ]/g,'ي').replace(/ؤ/g,'و').replace(/ة/g,'ه');
+    s = s.replace(/[\u064B-\u0652\u0640]/g,'');
+    s = s.replace(/[^\w\u0600-\u06FF\s]/g,' ');
+    return s.replace(/\s+/g,' ').trim();
+  };
+
+  const extractConc = (str)=>{
+    const s = String(str).toLowerCase();
+    const conc = [];
+    [/(\d+(?:\.\d+)?)\s*(?:مجم|مج|مليجرام|mg)/gi,
+     /(\d+(?:\.\d+)?)\s*(?:مل|مللي|مليلتر|ml)/gi,
+     /(\d+(?:\.\d+)?)\s*(?:جم|جرام|g)/gi].forEach(regex => {
+      let m; while((m = regex.exec(s)) !== null) conc.push(parseFloat(m[1]));
     });
+    return conc.sort((a,b)=>a-b);
+  };
 
-    console.log('📋 أعمدة الفرع:', mapBranch);
-    console.log('📋 أعمدة المطابقة:', mapMatch);
+  const concMatch = (a, b)=>{
+    if(!a.length || !b.length) return true;
+    if(a.length !== b.length) return false;
+    for(let i = 0; i < a.length; i++) if(Math.abs(a[i]-b[i]) > 0.01) return false;
+    return true;
+  };
 
-    if(!mapBranch.name) throw new Error('❌ لم يُعثر على "الصنف" في ملف الفرع. الأعمدة: ' + Object.keys(rowsBranch[0]).join(' | '));
-    if(!mapMatch.name) throw new Error('❌ لم يُعثر على "الصنف" في ملف المطابقة. الأعمدة: ' + Object.keys(rowsMatch[0]).join(' | '));
-    if(!mapMatch.discount){
-      const cols = Object.keys(rowsMatch[0]);
-      mapMatch.discount = cols[cols.length - 1];
+  const stripNumbers = (s)=> s.replace(/\d+(?:\.\d+)?/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const fullClean = (str)=>{
+    return removeExtras(normalizeText(cleanPrice(str)));
+  };
+
+  // ===== 3) تجميع الأصناف من كل المخازن =====
+  console.log('🔧 تجميع الأصناف من جميع المخازن...');
+  const itemsMap = {}; // cleanName → { rawName, price, stores: Set, discounts: [], conc }
+
+  storesData.forEach(store=>{
+    store.items.forEach(it=>{
+      const clean = fullClean(it.name);
+      if(!clean) return;
+      const noNum = stripNumbers(clean);
+      if(!noNum) return;
+
+      // مفتاح: النص بدون أرقام (للتجميع الذكي)
+      const key = noNum;
+
+      if(!itemsMap[key]){
+        itemsMap[key] = {
+          rawName: it.name,
+          cleanName: clean,
+          price: it.price,
+          conc: extractConc(it.name),
+          stores: new Set(),
+          discounts: [],
+          storeData: {}
+        };
+      }
+
+      itemsMap[key].stores.add(store.name);
+      itemsMap[key].discounts.push(it.disc);
+      itemsMap[key].storeData[store.name] = it.disc;
+    });
+  });
+
+  console.log(`✅ تم تجميع ${Object.keys(itemsMap).length} صنف فريد`);
+
+  // ===== 4) بناء النتيجة =====
+  const result = Object.values(itemsMap).map(item=>{
+    const storesArr = Array.from(item.stores);
+    const repeat = storesArr.length;
+
+    // أعلى خصم
+    let maxDisc = -Infinity;
+    let maxDiscStore = '—';
+    storesArr.forEach(s=>{
+      const d = item.storeData[s];
+      if(d > maxDisc){ maxDisc = d; maxDiscStore = s; }
+    });
+    if(maxDisc === -Infinity) maxDisc = 0;
+
+    return {
+      name: item.rawName,
+      cleanName: item.cleanName,
+      price: item.price,
+      discount: item.discounts[0] || 0,
+      stores: storesArr.join(' | '),
+      storesArr: storesArr,
+      discounts: item.discounts.join(' | '),
+      repeat,
+      maxDiscount: maxDisc,
+      maxDiscountStore: maxDiscStore
+    };
+  });
+
+  result.sort((a, b) => b.maxDiscount - a.maxDiscount);
+
+  const endTime = performance.now();
+  const duration = ((endTime - startTime) / 1000).toFixed(2);
+  console.log(`✅ النتيجة: ${result.length} صنف فريد | ⏱️ ${duration} ثانية`);
+
+  return { rows: result, total: result.length, storesCount: storesData.length };
+},
+
+/* ============================================================
+   1-B) مطابقة الأصناف — وضع "رفع مخزن واحد"
+   - ملف 1 (الفرع): [الكود] [الصنف] [السعر]
+   - ملف 2 (المطابقة): [الصنف] [السعر] [الخصم]
+   - الناتج: الكود | الصنف | السعر | الخصم | التطابق | النسبة | صنف التطابق
+   ============================================================ */
+async runItemsMatch(fileBranch, fileMatch){
+  const startTime = performance.now();
+
+  const d1 = await Excel.readFileAsArray(fileBranch);
+  const d2 = await Excel.readFileAsArray(fileMatch);
+
+  const branchRows = d1.rows, branchHeaders = d1.headers;
+  const matchRows = d2.rows, matchHeaders = d2.headers;
+
+  console.log('═══════════════════════════════════════');
+  console.log('📊 صفوف الفرع:', branchRows.length);
+  console.log('📊 صفوف المطابقة:', matchRows.length);
+
+  if(branchHeaders.length < 3) throw new Error('❌ ملف الفرع يجب أن يحتوي على 3 أعمدة');
+  if(matchHeaders.length < 3) throw new Error('❌ ملف المطابقة يجب أن يحتوي على 3 أعمدة');
+
+  const bCode  = branchHeaders[0];
+  const bName  = branchHeaders[1];
+  const bPrice = branchHeaders[2];
+
+  const mName  = matchHeaders[0];
+  const mPrice = matchHeaders[1];
+  const mDisc  = matchHeaders[2];
+
+  // ===== نفس دوال التنظيف =====
+  const cleanPrice = (str)=>{
+    if(str == null) return '';
+    let s = String(str).trim();
+    s = s.replace(/\/\s*\d+(\.\d+)?\s*(جنيه|جنية|ج|جم|جنيهًا)\s*$/gi, '');
+    s = s.replace(/ق\s*\/\s*\d+(\.\d+)?\s*(جنيه|جنية|ج|جم|جنيهًا)?\s*$/gi, '');
+    s = s.replace(/\/\s*\d+(\.\d+)?\s*(جنيه|جنية|ج|جم|جنيهًا)?/gi, '');
+    s = s.replace(/\b\d+(\.\d+)?\s*(جنيه|جنية|جنيهًا)\b/gi, '');
+    return s.trim();
+  };
+
+  const removeExtras = (str)=>{
+    if(!str) return '';
+    let s = str;
+    const extras = ['س ج','سج','س ق','سق','جديد','جديده','جديدة','قديم','قديمه','قديمة',
+      'اقراص','قرص','كبسول','كبسوله','امبول','امبولات','امبوله','عرض','عروض','سعر','جنيه','جنية'];
+    extras.forEach(w => {
+      s = s.replace(new RegExp(`(^|\\s)${w}(\\s|$)`, 'gi'), ' ');
+    });
+    return s.replace(/\s+/g, ' ').trim();
+  };
+
+  const normalizeText = (str)=>{
+    if(str == null) return '';
+    let s = String(str).trim().toLowerCase();
+    s = s.replace(/[أإآٱ]/g,'ا').replace(/[ىئ]/g,'ي').replace(/ؤ/g,'و').replace(/ة/g,'ه');
+    s = s.replace(/[\u064B-\u0652\u0640]/g,'');
+    s = s.replace(/[^\w\u0600-\u06FF\s]/g,' ');
+    return s.replace(/\s+/g,' ').trim();
+  };
+
+  const extractConc = (str)=>{
+    const s = String(str).toLowerCase();
+    const conc = [];
+    [/(\d+(?:\.\d+)?)\s*(?:مجم|مج|مليجرام|mg)/gi,
+     /(\d+(?:\.\d+)?)\s*(?:مل|مللي|مليلتر|ml)/gi,
+     /(\d+(?:\.\d+)?)\s*(?:جم|جرام|g)/gi].forEach(regex => {
+      let m; while((m = regex.exec(s)) !== null) conc.push(parseFloat(m[1]));
+    });
+    return conc.sort((a,b)=>a-b);
+  };
+
+  const concMatch = (a, b)=>{
+    if(!a.length || !b.length) return true;
+    if(a.length !== b.length) return false;
+    for(let i = 0; i < a.length; i++) if(Math.abs(a[i]-b[i]) > 0.01) return false;
+    return true;
+  };
+
+  const stripNumbers = (s)=> s.replace(/\d+(?:\.\d+)?/g, ' ').replace(/\s+/g, ' ').trim();
+  const fullClean = (str)=> removeExtras(normalizeText(cleanPrice(str)));
+
+  const levenshtein = (a, b)=>{
+    if(a === b) return 0;
+    const la = a.length, lb = b.length;
+    if(!la) return lb; if(!lb) return la;
+    if(Math.abs(la-lb) > Math.max(la,lb)*0.4) return Math.max(la,lb);
+    let prev = new Array(lb+1), curr = new Array(lb+1);
+    for(let j=0;j<=lb;j++) prev[j]=j;
+    for(let i=1;i<=la;i++){
+      curr[0]=i;
+      for(let j=1;j<=lb;j++){
+        curr[j] = a[i-1]===b[j-1] ? prev[j-1] : Math.min(prev[j-1],curr[j-1],prev[j])+1;
+      }
+      [prev,curr] = [curr,prev];
+    }
+    return prev[lb];
+  };
+
+  // بناء فهرس المطابقة
+  const exactIndex = {};
+  const noNumIndex = {};
+  const wordTokens = [];
+
+  matchRows.forEach(r=>{
+    const raw = String(r[mName] ?? '').trim();
+    if(!raw) return;
+    const clean = fullClean(raw);
+    if(!clean) return;
+    const noNum = stripNumbers(clean);
+    if(!exactIndex[clean]) exactIndex[clean] = r;
+    if(noNum){
+      if(!noNumIndex[noNum]) noNumIndex[noNum] = [];
+      noNumIndex[noNum].push(r);
+    }
+    wordTokens.push({
+      clean, noNum,
+      words: clean.split(' ').filter(w=>w.length>=2),
+      conc: extractConc(raw),
+      row: r
+    });
+  });
+
+  // المطابقة
+  const result = branchRows.map(r=>{
+    const code  = String(r[bCode] ?? '').trim();
+    const name  = String(r[bName] ?? '').trim();
+    const price = toNum(r[bPrice]);
+    const clean = fullClean(name);
+    const noNum = stripNumbers(clean);
+    const words = clean.split(' ').filter(w=>w.length>=2);
+    const conc = extractConc(name);
+
+    let matchRow = null;
+    let matchType = 'none';
+    let score = 0;
+    let matched = false;
+
+    // 1) تام
+    if(exactIndex[clean]){
+      matchRow = exactIndex[clean]; matched = true; matchType = 'exact'; score = 1;
     }
 
-    const exactIndex = {}, normIndex = {}, partialIndex = [], wordIndex = [];
-
-    rowsMatch.forEach(r=>{
-      const rawName = String(r[mapMatch.name] ?? '').trim();
-      if(!rawName) return;
-      const normName = normalize(rawName);
-      if(!normName) return;
-      if(!exactIndex[rawName]) exactIndex[rawName] = r;
-      if(!normIndex[normName]) normIndex[normName] = r;
-      partialIndex.push({ normName, row: r });
-      wordIndex.push({ normName, words: normName.split(' ').filter(w=>w.length>=2), row: r });
-    });
-
-    console.log(`🔎 فهرس المطابقة: ${Object.keys(normIndex).length} صنف`);
-
-    const wordMatchScore = (wordsA, wordsB)=>{
-      if(!wordsA.length || !wordsB.length) return 0;
-      let common = 0;
-      wordsA.forEach(w=>{ if(wordsB.includes(w)) common++; });
-      return common / Math.max(wordsA.length, wordsB.length);
-    };
-
-    const levenshtein = (a, b)=>{
-      if(!a.length) return b.length;
-      if(!b.length) return a.length;
-      const m = [];
-      for(let i=0;i<=b.length;i++) m[i]=[i];
-      for(let j=0;j<=a.length;j++) m[0][j]=j;
-      for(let i=1;i<=b.length;i++){
-        for(let j=1;j<=a.length;j++){
-          m[i][j] = b[i-1]===a[j-1] ? m[i-1][j-1]
-            : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
-        }
+    // 2) بدون أرقام
+    if(!matchRow && noNum && noNumIndex[noNum]){
+      for(const cand of noNumIndex[noNum]){
+        const candConc = extractConc(String(cand[mName] ?? ''));
+        if(!concMatch(conc, candConc)) continue;
+        const candClean = fullClean(String(cand[mName] ?? ''));
+        const dist = levenshtein(clean, candClean);
+        const maxLen = Math.max(clean.length, candClean.length);
+        const s = maxLen ? (1 - dist / maxLen) : 1;
+        if(s >= 0.85){ matchRow = cand; matched = true; matchType = 'noNumbers'; score = s; break; }
       }
-      return m[b.length][a.length];
-    };
+    }
 
-    const result = rowsBranch.map(r=>{
-      const code = r[mapBranch.code] ?? '';
-      const rawName = String(r[mapBranch.name] ?? '').trim();
-      const price = toNum(r[mapBranch.price]);
-      const normName = normalize(rawName);
-      const words = normName.split(' ').filter(w=>w.length>=2);
+    // 3) كلمات
+    if(!matchRow && words.length >= 2){
+      const firstWord = words[0];
+      const candidates = wordTokens.filter(x => x.words[0] === firstWord || x.words.some(w=>w===firstWord));
+      let best = null, bestScore = 0;
+      for(const x of candidates){
+        if(!concMatch(conc, x.conc)) continue;
+        if(Math.abs(x.words.length - words.length) > 2) continue;
 
-      let matchRow = null, matchType = '', score = 0;
+        const setX = new Set(x.words);
+        let common = 0;
+        for(const w of words) if(setX.has(w)) common++;
+        const wordRatio = common / Math.max(words.length, x.words.length);
 
-      if(exactIndex[rawName]){ matchRow = exactIndex[rawName]; matchType = 'exact'; score = 1; }
-      else if(normIndex[normName]){ matchRow = normIndex[normName]; matchType = 'normalized'; score = 1; }
-      else if(normName.length >= 4){
-        const candidates = partialIndex.filter(x =>
-          x.normName === normName || x.normName.includes(normName) || normName.includes(x.normName)
-        );
-        if(candidates.length){
-          candidates.sort((a,b)=> Math.abs(b.normName.length - normName.length) - Math.abs(a.normName.length - normName.length));
-          matchRow = candidates[0].row;
-          matchType = 'partial';
-          score = 0.9;
-        }
-      }
-      if(!matchRow && words.length >= 2){
-        let best = null, bestScore = 0;
-        wordIndex.forEach(x=>{
-          const s = wordMatchScore(words, x.words);
+        if(wordRatio >= 0.85){ if(wordRatio > bestScore){ bestScore = wordRatio; best = x.row; } continue; }
+        if(wordRatio >= 0.5){
+          const dist = levenshtein(clean, x.clean);
+          const maxLen = Math.max(clean.length, x.clean.length);
+          const s = maxLen ? (1 - dist / maxLen) : 0;
           if(s > bestScore){ bestScore = s; best = x.row; }
-        });
-        if(bestScore >= 0.7){ matchRow = best; matchType = 'word'; score = bestScore; }
+        }
       }
-      if(!matchRow && normName.length >= 6){
-        let best = null, bestDist = Infinity;
-        const maxDist = Math.max(2, Math.floor(normName.length * 0.15));
-        wordIndex.forEach(x=>{
-          if(Math.abs(x.normName.length - normName.length) > maxDist) return;
-          const d = levenshtein(normName, x.normName);
-          if(d < bestDist){ bestDist = d; best = x.row; }
-        });
-        if(bestDist <= maxDist){ matchRow = best; matchType = 'fuzzy'; score = 1 - (bestDist / normName.length); }
+      if(best && bestScore >= 0.85){
+        matchRow = best; matched = true;
+        matchType = bestScore >= 0.95 ? 'high' : (bestScore >= 0.90 ? 'medium' : 'low');
+        score = bestScore;
       }
+    }
 
-      let discount = 0, matched = false, matchPrice = null;
-      if(matchRow){
-        matchPrice = toNum(matchRow[mapMatch.price]);
-        matched = true;
-        discount = toNum(matchRow[mapMatch.discount]);
-      }
+    const discount = matchRow ? toNum(matchRow[mDisc]) : 0;
+    const matchName = matchRow ? String(matchRow[mName] ?? '') : '';
 
-      return { code, name: rawName, price, discount, matched, matchPrice, matchType,
-        matchName: matchRow ? String(matchRow[mapMatch.name] ?? '') : '', score };
-    });
+    return {
+      code, name, price, discount, matched, matchType,
+      percentage: Math.round(score * 100),
+      matchName, cleanedName: clean
+    };
+  });
 
-    const matchCount = result.filter(r=>r.matched).length;
-    const ratio = result.length ? ((matchCount/result.length)*100).toFixed(1) : 0;
+  const matchCount = result.filter(r=>r.matched).length;
+  const ratio = result.length ? ((matchCount/result.length)*100).toFixed(1) : 0;
+  const typeStats = {};
+  result.filter(r=>r.matched).forEach(r=>{ typeStats[r.matchType] = (typeStats[r.matchType]||0)+1; });
 
-    const typeStats = {};
-    result.filter(r=>r.matched).forEach(r=>{ typeStats[r.matchType] = (typeStats[r.matchType]||0) + 1; });
-    console.log(`✅ المطابقة: ${matchCount}/${result.length} (${ratio}%)`, typeStats);
+  const endTime = performance.now();
+  console.log(`✅ المطابقة: ${matchCount}/${result.length} (${ratio}%)`, typeStats);
+  console.log(`⏱️ ${((endTime-startTime)/1000).toFixed(2)} ثانية`);
 
-    return { rows: result, ratio, matchCount, total: result.length };
-  },
-
+  return { rows: result, ratio, matchCount, total: result.length };
+},
   /* ============================================================
      2) فرق الجملة
      ============================================================ */
