@@ -56,122 +56,356 @@ const Dashboard = {
         </div>`;
       return;
     }
+      /* ============================================================
+   /* 1) مطابقة الأصناف — وضعان */
+if(view === 'items-match'){
+  el.innerHTML = `
+    <div class="card">
+      <h3><i class="fas fa-table-cells-large"></i> مطابقة الأصناف</h3>
+      <div class="sub-tabs" id="matchModeTabs" style="margin-bottom:15px">
+        <button class="active" data-mode="all-stores"><i class="fas fa-warehouse"></i> رفع جميع المخازن</button>
+        <button data-mode="one-store"><i class="fas fa-store"></i> رفع مخزن واحد</button>
+      </div>
+      <div id="matchContent"></div>
+    </div>`;
 
-    /* 1) مطابقة الأصناف */
-    if(view === 'items-match'){
-      el.innerHTML = `
-        <div class="card">
-          <h3><i class="fas fa-table-cells-large"></i> مطابقة الأصناف</h3>
-          ${this.uploadZone('zoneBranch','ملف الفرع (كود، صنف، سعر)', ['كود','صنف','سعر'], 'fa-store')}
-          ${this.uploadZone('zoneMatch','ملف المطابقة (صنف، سعر، خصم)', ['صنف','خصم'], 'fa-clipboard-check')}
-          <div class="action-row">
-            <button class="btn-primary" id="btnRunMatch"><i class="fas fa-play"></i> المتابعة والمطابقة</button>
-            <button class="btn-ghost" id="btnClearMatch"><i class="fas fa-trash-can"></i> حذف البيانات</button>
-          </div>
-          <div class="toolbar">
-            <input type="text" id="searchMatch" placeholder="🔍 بحث عن الصنف بالاسم...">
-            <select id="filterMatch">
-              <option value="all">كل الأصناف</option>
-              <option value="matched">المطابق فقط</option>
-              <option value="unmatched">غير المطابق فقط</option>
-            </select>
-            <button class="btn-primary" id="btnExportMatch" style="width:auto"><i class="fas fa-file-excel"></i> تحميل Excel</button>
-          </div>
-          <div id="matchResults"></div>
-        </div>`;
+  const content = document.getElementById('matchContent');
+  let currentMode = 'all-stores';
+  let currentRows = [];
+  let allStoresFiles = [];
+  let modeListenersAttached = false;
 
-      this.wireUploadZones(['zoneBranch','zoneMatch']);
-      let currentRows = [];
+  const attachModeListeners = ()=>{
+    if(modeListenersAttached) return;
+    modeListenersAttached = true;
+    document.querySelectorAll('#matchModeTabs button').forEach(btn=>{
+      btn.onclick = ()=>{
+        document.querySelectorAll('#matchModeTabs button').forEach(x=>x.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        currentRows = [];
+        renderMode();
+      };
+    });
+  };
+  attachModeListeners();
 
-      const render = ()=>{
-        const q = normalize(document.getElementById('searchMatch').value);
-        const f = document.getElementById('filterMatch').value;
-        let rows = currentRows.filter(r => (!q || normalize(r.name).includes(q)));
-        if(f === 'matched') rows = rows.filter(r => r.matched);
-        if(f === 'unmatched') rows = rows.filter(r => !r.matched);
+  const renderMode = ()=>{
+    if(currentMode === 'all-stores') renderAllStoresMode();
+    else renderOneStoreMode();
+  };
 
-        const matchedCount = currentRows.filter(r=>r.matched).length;
-        const unmatchedCount = currentRows.length - matchedCount;
-        const ratio = currentRows.length ? ((matchedCount / currentRows.length) * 100).toFixed(1) : 0;
-        const matchTypeLabel = { exact:'تام', normalized:'مطبّع', partial:'جزئي', word:'كلمات', fuzzy:'ضبابي', '':'' };
+  /* ============ وضع 1: رفع جميع المخازن ============ */
+  const renderAllStoresMode = ()=>{
+    content.innerHTML = `
+      <div class="card" style="background:#f8fafc">
+        <h3><i class="fas fa-warehouse"></i> رفع جميع المخازن (50+ ملف)</h3>
+        <p style="color:var(--muted);margin-bottom:15px">
+          <i class="fas fa-info-circle"></i> ارفع كل ملفات المخازن دفعة واحدة (كل ملف = مخزن). كل ملف يجب أن يحتوي على 3 أعمدة: الصنف، السعر، الخصم
+        </p>
+        <div class="upload-zone" id="zoneAllStores" style="padding:40px">
+          <i class="fas fa-cloud-arrow-up" style="font-size:60px;color:var(--primary)"></i>
+          <p style="font-size:16px;font-weight:600;color:var(--primary);margin-top:10px">اضغط لاختيار ملفات المخازن</p>
+          <p style="color:var(--muted)">يمكنك اختيار أكثر من 50 ملف دفعة واحدة</p>
+          <input type="file" accept=".xlsx,.xls,.csv" multiple>
+          <div class="file-name"></div>
+          <div class="file-info"></div>
+          <div class="file-error"></div>
+        </div>
+        <div class="action-row">
+          <button class="btn-primary" id="btnRunAllStores"><i class="fas fa-play"></i> مطابقة جميع المخازن</button>
+          <button class="btn-ghost" id="btnClearAllStores"><i class="fas fa-trash-can"></i> حذف البيانات</button>
+        </div>
+        <div class="toolbar">
+          <input type="text" id="searchAllStores" placeholder="🔍 بحث بالصنف أو المخزن...">
+          <select id="sortAllStores">
+            <option value="desc">⬇️ أعلى خصم (تنازلي)</option>
+            <option value="asc">⬆️ أعلى خصم (تصاعدي)</option>
+            <option value="all">بدون ترتيب</option>
+          </select>
+          <select id="filterRepeat">
+            <option value="all">كل التكرارات</option>
+            <option value="1">مخزن واحد</option>
+            <option value="2">مخزنين</option>
+            <option value="3+">3 مخازن فأكثر</option>
+          </select>
+          <button class="btn-primary" id="btnExportAllStores" style="width:auto"><i class="fas fa-file-excel"></i> تحميل Excel</button>
+        </div>
+        <div id="allStoresResults"></div>
+      </div>`;
 
-        if(!rows.length){
-          document.getElementById('matchResults').innerHTML = `
-            <div style="text-align:center;padding:40px;color:var(--muted)">
-              <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
-              <p>${currentRows.length ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد بيانات — قم برفع الملفين واضغط "المتابعة والمطابقة"'}</p>
-            </div>`;
-          return;
-        }
+    // إعداد الرفع المتعدد
+    const zone = document.getElementById('zoneAllStores');
+    const input = zone.querySelector('input[type=file]');
+    zone.onclick = (e)=>{ if(!e.target.closest('input')) input.click(); };
+    input.onchange = ()=>{
+      allStoresFiles = Array.from(input.files);
+      const nameEl = zone.querySelector('.file-name');
+      const infoEl = zone.querySelector('.file-info');
+      if(nameEl) nameEl.innerHTML = `<i class="fas fa-check-circle"></i> تم اختيار ${allStoresFiles.length} ملف`;
+      if(infoEl) infoEl.textContent = allStoresFiles.slice(0, 5).map(f=>f.name).join(' | ') + (allStoresFiles.length > 5 ? ' ...' : '');
+      showToast(`تم اختيار ${allStoresFiles.length} ملف`,'success');
+    };
 
-        let tableRows = '';
-        rows.forEach((r,i)=>{
-          tableRows += `<tr>
-            <td>${i+1}</td><td>${r.code}</td><td>${r.name}</td><td>${r.price}</td>
-            <td><b style="color:${r.discount>0?'#166534':'#64748b'}">${r.discount}</b></td>
-            <td style="font-size:12px;color:#64748b">${r.matchName || '—'}</td>
-            <td style="font-size:11px;color:#64748b">${matchTypeLabel[r.matchType] || '—'}</td>
-            <td><span class="${r.matched?'badge-match':'badge-miss'}"><i class="fas ${r.matched?'fa-circle-check':'fa-circle-xmark'}"></i>${r.matched?'مطابق':'غير مطابق'}</span></td>
-          </tr>`;
-        });
+    let allStoresData = [];
+    const render = ()=>{
+      const q = normalize(document.getElementById('searchAllStores').value);
+      const sort = document.getElementById('sortAllStores').value;
+      const repeatFilter = document.getElementById('filterRepeat').value;
 
-        document.getElementById('matchResults').innerHTML = `
-          <div class="stats-grid" style="margin:15px 0">
-            <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${currentRows.length}</div><div class="stat-label">إجمالي الصفوف</div></div>
-            <div class="stat-card"><i class="fas fa-circle-check" style="color:var(--success)"></i><div class="stat-num" style="color:var(--success)">${matchedCount}</div><div class="stat-label">مطابق</div></div>
-            <div class="stat-card"><i class="fas fa-circle-xmark" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${unmatchedCount}</div><div class="stat-label">غير مطابق</div></div>
-            <div class="stat-card"><i class="fas fa-percent"></i><div class="stat-num">${ratio}%</div><div class="stat-label">نسبة المطابقة</div></div>
-          </div>
-          <div style="margin:10px 0;color:var(--muted);font-size:13px"><i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${currentRows.length} صف</div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>#</th><th>الكود</th><th>الصنف (الفرع)</th><th>السعر</th><th>الخصم</th><th>اسم المطابقة</th><th>نوع</th><th>الحالة</th></tr></thead>
+      let rows = allStoresData.filter(r =>
+        !q || normalize(r.name).includes(q) || normalize(r.stores).includes(q)
+      );
+
+      if(repeatFilter === '1') rows = rows.filter(r=>r.repeat === 1);
+      else if(repeatFilter === '2') rows = rows.filter(r=>r.repeat === 2);
+      else if(repeatFilter === '3+') rows = rows.filter(r=>r.repeat >= 3);
+
+      if(sort === 'desc') rows = [...rows].sort((a,b)=>b.maxDiscount - a.maxDiscount);
+      else if(sort === 'asc') rows = [...rows].sort((a,b)=>a.maxDiscount - b.maxDiscount);
+
+      const total = allStoresData.length;
+      const multiStore = allStoresData.filter(r=>r.repeat > 1).length;
+      const maxDiscountOverall = allStoresData.length ? Math.max(...allStoresData.map(r=>r.maxDiscount)) : 0;
+
+      if(!rows.length){
+        document.getElementById('allStoresResults').innerHTML = `
+          <div style="text-align:center;padding:40px;color:var(--muted)">
+            <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
+            <p>${total ? 'لا توجد نتائج' : 'ارفع ملفات المخازن واضغط "مطابقة جميع المخازن"'}</p>
+          </div>`;
+        return;
+      }
+
+      let tableRows = '';
+      rows.forEach((r,i)=>{
+        tableRows += `<tr>
+          <td>${i+1}</td>
+          <td>${r.name}</td>
+          <td>${r.price ?? '—'}</td>
+          <td>${r.discount}</td>
+          <td style="max-width:300px;white-space:normal;font-size:12px">${r.stores}</td>
+          <td style="max-width:250px;white-space:normal;font-size:12px">${r.discounts}</td>
+          <td><span class="badge-match" style="background:${r.repeat > 1 ? '#dbeafe' : '#f0fdfa'};color:${r.repeat > 1 ? '#1e40af' : '#0f766e'}">${r.repeat}</span></td>
+          <td><b style="color:#166534">${r.maxDiscount}</b><br><small style="color:var(--muted)">${r.maxDiscountStore}</small></td>
+        </tr>`;
+      });
+
+      document.getElementById('allStoresResults').innerHTML = `
+        <div class="stats-grid" style="margin:15px 0">
+          <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${total}</div><div class="stat-label">أصناف فريدة</div></div>
+          <div class="stat-card"><i class="fas fa-copy" style="color:var(--primary)"></i><div class="stat-num" style="color:var(--primary)">${multiStore}</div><div class="stat-label">في أكثر من مخزن</div></div>
+          <div class="stat-card"><i class="fas fa-trophy" style="color:var(--accent)"></i><div class="stat-num" style="color:var(--accent)">${maxDiscountOverall}</div><div class="stat-label">أعلى خصم عام</div></div>
+        </div>
+        <div style="margin:10px 0;color:var(--muted);font-size:13px">
+          <i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${total} صف
+        </div>
+        <div class="table-wrap" style="max-height:70vh;overflow:auto">
+          <table>
+            <thead><tr>
+              <th>#</th><th>الصنف</th><th>السعر</th><th>الخصم</th>
+              <th>المخازن</th><th>الخصومات</th><th>التكرار</th><th>أعلى خصم (المخزن)</th>
+            </tr></thead>
             <tbody>${tableRows}</tbody>
-          </table></div>`;
-      };
+          </table>
+        </div>`;
+    };
 
-      document.getElementById('searchMatch').oninput = render;
-      document.getElementById('filterMatch').onchange = render;
+    document.getElementById('searchAllStores').oninput = render;
+    document.getElementById('sortAllStores').onchange = render;
+    document.getElementById('filterRepeat').onchange = render;
 
-      document.getElementById('btnRunMatch').onclick = async ()=>{
-        const btn = document.getElementById('btnRunMatch');
-        const z1 = document.getElementById('zoneBranch');
-        const z2 = document.getElementById('zoneMatch');
-        if(!z1._file){ showToast('❌ ملف الفرع غير صالح','error'); z1.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-        if(!z2._file){ showToast('❌ ملف المطابقة غير صالح','error'); z2.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-        setLoading(btn, true);
-        try{
-          const { rows } = await Matching.runItemsMatch(z1._file, z2._file);
-          currentRows = rows;
-          App.branchesData[dataKey] = { ...(App.branchesData[dataKey]||{}), itemsMatch: rows };
-          App.saveData();
-          render();
-          showToast('تم المطابقة بنجاح','success');
-        }catch(err){ showToast(err.message || 'حدث خطأ','error'); }
-        setLoading(btn, false);
-      };
+    document.getElementById('btnRunAllStores').onclick = async ()=>{
+      const btn = document.getElementById('btnRunAllStores');
+      if(!allStoresFiles.length){ showToast('❌ ارفع ملفات المخازن أولاً','error'); return; }
+      setLoading(btn, true);
+      try{
+        const res = await Matching.runItemsMatchAllStores(allStoresFiles);
+        allStoresData = res.rows;
+        render();
+        showToast(`تم مطابقة ${res.total} صنف من ${res.storesCount} مخزن`,'success');
+      }catch(err){
+        showToast(err.message || 'حدث خطأ','error');
+      }
+      setLoading(btn, false);
+    };
 
-      document.getElementById('btnExportMatch').onclick = ()=>{
-        if(!currentRows.length){ showToast('لا توجد بيانات','error'); return; }
-        const out = currentRows.map(r=>({
-          'الكود': r.code, 'الصنف': r.name, 'السعر': r.price, 'الخصم': r.discount,
-          'اسم المطابقة': r.matchName || '', 'سعر المطابقة': r.matchPrice ?? '',
-          'الحالة': r.matched ? 'مطابق' : 'غير مطابق'
-        }));
-        Excel.download(out, 'مطابقة_الأصناف.xlsx', 'مطابقة الأصناف');
-      };
+    document.getElementById('btnClearAllStores').onclick = async ()=>{
+      if(await confirmModal('حذف','حذف كل البيانات؟')){
+        allStoresData = [];
+        allStoresFiles = [];
+        document.getElementById('allStoresResults').innerHTML = '';
+        const zone = document.getElementById('zoneAllStores');
+        const input = zone.querySelector('input[type=file]');
+        if(input) input.value = '';
+        const nameEl = zone.querySelector('.file-name');
+        if(nameEl) nameEl.innerHTML = '';
+        showToast('تم الحذف','success');
+      }
+    };
 
-      document.getElementById('btnClearMatch').onclick = async ()=>{
-        if(await confirmModal('حذف البيانات','حذف بيانات المطابقة؟')){
-          currentRows = [];
-          document.getElementById('matchResults').innerHTML = '';
-          Excel.resetAllZones();
-          if(App.branchesData[dataKey]) delete App.branchesData[dataKey].itemsMatch;
-          App.saveData();
-          showToast('تم الحذف','success');
+    document.getElementById('btnExportAllStores').onclick = ()=>{
+      if(!allStoresData.length){ showToast('لا توجد بيانات','error'); return; }
+      const out = allStoresData.map(r=>({
+        'الصنف': r.name,
+        'السعر': r.price,
+        'الخصم': r.discount,
+        'المخازن': r.stores,
+        'الخصومات': r.discounts,
+        'التكرار': r.repeat,
+        'أعلى خصم': r.maxDiscount,
+        'مخزن أعلى خصم': r.maxDiscountStore
+      }));
+      Excel.download(out, 'مطابقة_جميع_المخازن.xlsx', 'جميع المخازن');
+    };
+
+    render();
+  };
+
+  /* ============ وضع 2: رفع مخزن واحد ============ */
+  const renderOneStoreMode = ()=>{
+    content.innerHTML = `
+      <div class="card" style="background:#f8fafc">
+        <h3><i class="fas fa-store"></i> رفع مخزن واحد</h3>
+        <p style="color:var(--muted);margin-bottom:15px">
+          <i class="fas fa-info-circle"></i> ارفع ملفين: ملف الفرع + ملف المطابقة
+        </p>
+        ${this.uploadZone('zoneBranch','الملف 1: الفرع (الكود، الصنف، السعر)', null, 'fa-store')}
+        ${this.uploadZone('zoneMatch','الملف 2: المطابقة (الصنف، السعر، الخصم)', null, 'fa-clipboard-check')}
+        <div class="action-row">
+          <button class="btn-primary" id="btnRunOneStore"><i class="fas fa-play"></i> المطابقة</button>
+          <button class="btn-ghost" id="btnClearOneStore"><i class="fas fa-trash-can"></i> حذف البيانات</button>
+        </div>
+        <div class="toolbar">
+          <input type="text" id="searchOneStore" placeholder="🔍 بحث عن الصنف...">
+          <select id="filterOneStore">
+            <option value="all">الكل</option>
+            <option value="matched">المطابق فقط</option>
+            <option value="unmatched">غير المطابق فقط</option>
+          </select>
+          <button class="btn-primary" id="btnExportOneStore" style="width:auto"><i class="fas fa-file-excel"></i> تحميل Excel</button>
+        </div>
+        <div id="oneStoreResults"></div>
+      </div>`;
+
+    this.wireUploadZones(['zoneBranch','zoneMatch']);
+    let oneStoreData = [];
+
+    const render = ()=>{
+      const q = normalize(document.getElementById('searchOneStore').value);
+      const f = document.getElementById('filterOneStore').value;
+
+      let rows = oneStoreData.filter(r => !q || normalize(r.name).includes(q));
+      if(f === 'matched') rows = rows.filter(r=>r.matched);
+      else if(f === 'unmatched') rows = rows.filter(r=>!r.matched);
+
+      const matchedCount = oneStoreData.filter(r=>r.matched).length;
+      const unmatchedCount = oneStoreData.length - matchedCount;
+      const ratio = oneStoreData.length ? ((matchedCount/oneStoreData.length)*100).toFixed(1) : 0;
+
+      if(!rows.length){
+        document.getElementById('oneStoreResults').innerHTML = `
+          <div style="text-align:center;padding:40px;color:var(--muted)">
+            <i class="fas fa-inbox" style="font-size:50px;margin-bottom:15px"></i>
+            <p>${oneStoreData.length ? 'لا توجد نتائج' : 'ارفع الملفين واضغط "المطابقة"'}</p>
+          </div>`;
+        return;
+      }
+
+      let tableRows = '';
+      rows.forEach((r,i)=>{
+        let pctColor = '#64748b';
+        if(r.matched){
+          if(r.matchType === 'exact' || r.matchType === 'high') pctColor = '#166534';
+          else if(r.matchType === 'medium') pctColor = '#ca8a04';
+          else pctColor = '#dc2626';
         }
-      };
-      return;
-    }
+        const badge = r.matched
+          ? `<span class="badge-match"><i class="fas fa-circle-check"></i> مطابق</span>`
+          : `<span class="badge-miss"><i class="fas fa-circle-xmark"></i> غير مطابق</span>`;
+
+        tableRows += `<tr>
+          <td>${i+1}</td>
+          <td>${r.code || ''}</td>
+          <td>${r.name}</td>
+          <td>${r.price ?? ''}</td>
+          <td>${r.discount ?? 0}</td>
+          <td>${badge}</td>
+          <td><b style="color:${pctColor}">${r.percentage}%</b></td>
+          <td style="font-size:12px;color:var(--muted)">${r.matchName || '—'}</td>
+        </tr>`;
+      });
+
+      document.getElementById('oneStoreResults').innerHTML = `
+        <div class="stats-grid" style="margin:15px 0">
+          <div class="stat-card"><i class="fas fa-list-ol"></i><div class="stat-num">${oneStoreData.length}</div><div class="stat-label">إجمالي</div></div>
+          <div class="stat-card"><i class="fas fa-circle-check" style="color:var(--success)"></i><div class="stat-num" style="color:var(--success)">${matchedCount}</div><div class="stat-label">مطابق</div></div>
+          <div class="stat-card"><i class="fas fa-circle-xmark" style="color:var(--danger)"></i><div class="stat-num" style="color:var(--danger)">${unmatchedCount}</div><div class="stat-label">غير مطابق</div></div>
+          <div class="stat-card"><i class="fas fa-percent"></i><div class="stat-num">${ratio}%</div><div class="stat-label">نسبة المطابقة</div></div>
+        </div>
+        <div style="margin:10px 0;color:var(--muted);font-size:13px">
+          <i class="fas fa-info-circle"></i> يُعرض ${rows.length} من ${oneStoreData.length} صف
+        </div>
+        <div class="table-wrap" style="max-height:70vh;overflow:auto">
+          <table>
+            <thead><tr>
+              <th>#</th><th>الكود</th><th>الصنف</th><th>السعر</th><th>الخصم</th>
+              <th>التطابق</th><th>النسبة</th><th>صنف التطابق</th>
+            </tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>`;
+    };
+
+    document.getElementById('searchOneStore').oninput = render;
+    document.getElementById('filterOneStore').onchange = render;
+
+    document.getElementById('btnRunOneStore').onclick = async ()=>{
+      const btn = document.getElementById('btnRunOneStore');
+      const z1 = document.getElementById('zoneBranch');
+      const z2 = document.getElementById('zoneMatch');
+      if(!z1._file || !z2._file){ showToast('❌ ارفع الملفين أولاً','error'); return; }
+      setLoading(btn, true);
+      try{
+        const res = await Matching.runItemsMatch(z1._file, z2._file);
+        oneStoreData = res.rows;
+        render();
+        showToast(`تم المطابقة: ${res.matchCount}/${res.total}`,'success');
+      }catch(err){
+        showToast(err.message || 'حدث خطأ','error');
+      }
+      setLoading(btn, false);
+    };
+
+    document.getElementById('btnClearOneStore').onclick = async ()=>{
+      if(await confirmModal('حذف','حذف البيانات؟')){
+        oneStoreData = [];
+        document.getElementById('oneStoreResults').innerHTML = '';
+        Excel.resetAllZones();
+        showToast('تم الحذف','success');
+      }
+    };
+
+    document.getElementById('btnExportOneStore').onclick = ()=>{
+      if(!oneStoreData.length){ showToast('لا توجد بيانات','error'); return; }
+      const out = oneStoreData.map(r=>({
+        'الكود': r.code,
+        'الصنف': r.name,
+        'السعر': r.price,
+        'الخصم': r.discount,
+        'التطابق': r.matched ? 'مطابق' : 'غير مطابق',
+        'النسبة': r.percentage + '%',
+        'صنف التطابق': r.matchName || ''
+      }));
+      Excel.download(out, 'مطابقة_مخزن_واحد.xlsx', 'مطابقة مخزن واحد');
+    };
+
+    render();
+  };
+
+  renderMode();
+  return;
+}
 
     /* 2) فرق الجملة */
     if(view === 'whole-diff'){
